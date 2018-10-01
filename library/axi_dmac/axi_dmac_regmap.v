@@ -55,7 +55,20 @@ module axi_dmac_regmap #(
   parameter SYNC_TRANSFER_START = 0,
   parameter CACHE_COHERENT = 0,
   parameter [3:0] AXI_AXCACHE = 4'b0011,
-  parameter [2:0] AXI_AXPROT = 3'b000
+  parameter [2:0] AXI_AXPROT = 3'b000,
+  parameter ENABLE_FRAME_LOCK = 0,
+  parameter FRAME_LOCK_MODE = 0,
+  parameter MAX_NUM_FRAMES_MSB = 2,
+  parameter HAS_AUTORUN = 0,
+  parameter DMAC_DEF_FLAGS = 0,
+  parameter DMAC_DEF_SRC_ADDR = 0,
+  parameter DMAC_DEF_DEST_ADDR = 0,
+  parameter DMAC_DEF_X_LENGTH = 0,
+  parameter DMAC_DEF_Y_LENGTH = 0,
+  parameter DMAC_DEF_SRC_STRIDE = 0,
+  parameter DMAC_DEF_DEST_STRIDE = 0,
+  parameter DMAC_DEF_FLOCK_CFG = 0,
+  parameter DMAC_DEF_FLOCK_STRIDE = 0
 ) (
 
   // Slave AXI interface
@@ -64,7 +77,7 @@ module axi_dmac_regmap #(
 
   input s_axi_awvalid,
   output s_axi_awready,
-  input [10:0] s_axi_awaddr,
+  input [11:0] s_axi_awaddr,
   input [2:0] s_axi_awprot,
 
   input s_axi_wvalid,
@@ -78,7 +91,7 @@ module axi_dmac_regmap #(
 
   input s_axi_arvalid,
   output s_axi_arready,
-  input [10:0] s_axi_araddr,
+  input [11:0] s_axi_araddr,
   input [2:0] s_axi_arprot,
 
   output s_axi_rvalid,
@@ -90,7 +103,7 @@ module axi_dmac_regmap #(
   output reg irq,
 
   // Control interface
-  output reg ctrl_enable = 1'b0,
+  output reg ctrl_enable = HAS_AUTORUN[0],
   output reg ctrl_pause = 1'b0,
   output reg ctrl_hwdesc = 1'b0,
 
@@ -104,13 +117,20 @@ module axi_dmac_regmap #(
   output [DMA_LENGTH_WIDTH-1:0] request_y_length,
   output [DMA_LENGTH_WIDTH-1:0] request_dest_stride,
   output [DMA_LENGTH_WIDTH-1:0] request_src_stride,
+  output [MAX_NUM_FRAMES_MSB:0] request_flock_framenum,
+  output                        request_flock_mode,
+  output                        request_flock_wait_master,
+  output [MAX_NUM_FRAMES_MSB:0] request_flock_distance,
+  output [DMA_AXI_ADDR_WIDTH-1:0] request_flock_stride,
+  output request_flock_en,
   output request_sync_transfer_start,
   output request_last,
+  output request_cyclic,
 
   // DMA response interface
   input response_eot,
   input [31:0] response_sg_desc_id,
-  input [BYTES_PER_BURST_WIDTH-1:0] response_measured_burst_length,
+  input [BYTES_PER_BURST_WIDTH:0] response_measured_burst_length,
   input response_partial,
   input response_valid,
   output response_ready,
@@ -179,7 +199,7 @@ module axi_dmac_regmap #(
 
   always @(posedge s_axi_aclk) begin
     if (s_axi_aresetn == 1'b0) begin
-      ctrl_enable <= 1'b0;
+      ctrl_enable <= HAS_AUTORUN[0];
       ctrl_pause <= 1'b0;
       ctrl_hwdesc <= 1'b0;
       up_irq_mask <= 2'b11;
@@ -259,7 +279,20 @@ module axi_dmac_regmap #(
     .HAS_SRC_ADDR(HAS_SRC_ADDR),
     .DMA_2D_TRANSFER(DMA_2D_TRANSFER),
     .DMA_SG_TRANSFER(DMA_SG_TRANSFER),
-    .SYNC_TRANSFER_START(SYNC_TRANSFER_START)
+    .SYNC_TRANSFER_START(SYNC_TRANSFER_START),
+    .ENABLE_FRAME_LOCK(ENABLE_FRAME_LOCK),
+    .FRAME_LOCK_MODE(FRAME_LOCK_MODE),
+    .MAX_NUM_FRAMES_MSB(MAX_NUM_FRAMES_MSB),
+    .HAS_AUTORUN(HAS_AUTORUN),
+    .DMAC_DEF_FLAGS(DMAC_DEF_FLAGS),
+    .DMAC_DEF_SRC_ADDR(DMAC_DEF_SRC_ADDR),
+    .DMAC_DEF_DEST_ADDR(DMAC_DEF_DEST_ADDR),
+    .DMAC_DEF_X_LENGTH(DMAC_DEF_X_LENGTH),
+    .DMAC_DEF_Y_LENGTH(DMAC_DEF_Y_LENGTH),
+    .DMAC_DEF_SRC_STRIDE(DMAC_DEF_SRC_STRIDE),
+    .DMAC_DEF_DEST_STRIDE(DMAC_DEF_DEST_STRIDE),
+    .DMAC_DEF_FLOCK_CFG(DMAC_DEF_FLOCK_CFG),
+    .DMAC_DEF_FLOCK_STRIDE(DMAC_DEF_FLOCK_STRIDE)
   ) i_regmap_request (
     .clk(s_axi_aclk),
     .reset(~s_axi_aresetn),
@@ -286,8 +319,15 @@ module axi_dmac_regmap #(
     .request_y_length(request_y_length),
     .request_dest_stride(request_dest_stride),
     .request_src_stride(request_src_stride),
+    .request_flock_framenum(request_flock_framenum),
+    .request_flock_mode(request_flock_mode),
+    .request_flock_wait_master(request_flock_wait_master),
+    .request_flock_distance(request_flock_distance),
+    .request_flock_stride(request_flock_stride),
+    .request_flock_en(request_flock_en),
     .request_sync_transfer_start(request_sync_transfer_start),
     .request_last(request_last),
+    .request_cyclic(request_cyclic),
 
     .response_eot(response_eot),
     .response_sg_desc_id(response_sg_desc_id),
@@ -297,7 +337,8 @@ module axi_dmac_regmap #(
     .response_ready(response_ready));
 
   up_axi #(
-    .AXI_ADDRESS_WIDTH (11)
+    .AXI_ADDRESS_WIDTH (12),
+    .ADDRESS_WIDTH (9)
   ) i_up_axi (
     .up_rstn(s_axi_aresetn),
     .up_clk(s_axi_aclk),

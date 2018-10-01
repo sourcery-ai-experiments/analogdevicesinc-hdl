@@ -48,6 +48,7 @@ module axi_dmac_transfer #(
   parameter DMA_TYPE_SRC = 2,
   parameter DMA_AXI_ADDR_WIDTH = 32,
   parameter DMA_2D_TRANSFER = 0,
+  parameter DMA_2D_TLAST_MODE = 0,
   parameter DMA_SG_TRANSFER = 0,
   parameter ASYNC_CLK_REQ_SRC = 1,
   parameter ASYNC_CLK_SRC_DEST = 1,
@@ -65,7 +66,11 @@ module axi_dmac_transfer #(
   parameter ENABLE_DIAGNOSTICS_IF = 0,
   parameter ALLOW_ASYM_MEM = 0,
   parameter [3:0] AXI_AXCACHE = 4'b0011,
-  parameter [2:0] AXI_AXPROT = 3'b000
+  parameter [2:0] AXI_AXPROT = 3'b000,
+  parameter FRAME_LOCK_MODE = 0,
+  parameter MAX_NUM_FRAMES = 4,
+  parameter MAX_NUM_FRAMES_MSB = 2,
+  parameter USE_EXT_SYNC = 0
 ) (
   input ctrl_clk,
   input ctrl_resetn,
@@ -84,12 +89,19 @@ module axi_dmac_transfer #(
   input [DMA_LENGTH_WIDTH-1:0] req_y_length,
   input [DMA_LENGTH_WIDTH-1:0] req_dest_stride,
   input [DMA_LENGTH_WIDTH-1:0] req_src_stride,
+  input [MAX_NUM_FRAMES_MSB:0] req_flock_framenum,
+  input                        req_flock_mode,
+  input                        req_flock_wait_master,
+  input [MAX_NUM_FRAMES_MSB:0] req_flock_distance,
+  input [DMA_AXI_ADDR_WIDTH-1:0] req_flock_stride,
+  input req_flock_en,
   input req_sync_transfer_start,
   input req_last,
+  input req_cyclic,
 
   output req_eot,
   output [31:0] req_sg_desc_id,
-  output [BYTES_PER_BURST_WIDTH-1:0] req_measured_burst_length,
+  output [BYTES_PER_BURST_WIDTH:0] req_measured_burst_length,
   output req_response_partial,
   output req_response_valid,
   input req_response_ready,
@@ -172,6 +184,7 @@ module axi_dmac_transfer #(
   input m_axis_ready,
   output m_axis_valid,
   output [DMA_DATA_WIDTH_DEST-1:0] m_axis_data,
+  output [0:0]                     m_axis_user,
   output m_axis_last,
   output m_axis_xfer_req,
 
@@ -201,6 +214,18 @@ module axi_dmac_transfer #(
   output [ID_WIDTH-1:0] dbg_src_response_id,
   output [11:0] dbg_status,
 
+  // Frame lock interface
+  // Master mode
+  input  [MAX_NUM_FRAMES_MSB:0] m_frame_in,
+  output [MAX_NUM_FRAMES_MSB:0] m_frame_out,
+  // Slave mode
+  input  [MAX_NUM_FRAMES_MSB:0] s_frame_in,
+  output [MAX_NUM_FRAMES_MSB:0] s_frame_out,
+
+  // External sync interface
+  input src_ext_sync,
+  input dest_ext_sync,
+
   // Diagnostics interface
   output [7:0] dest_diag_level_bursts
 );
@@ -210,13 +235,14 @@ module axi_dmac_transfer #(
   wire [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_DEST] dma_req_dest_address;
   wire [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_SRC] dma_req_src_address;
   wire [DMA_LENGTH_WIDTH-1:0] dma_req_length;
-  wire [BYTES_PER_BURST_WIDTH-1:0] dma_req_measured_burst_length;
+  wire [BYTES_PER_BURST_WIDTH:0] dma_req_measured_burst_length;
   wire dma_req_eot;
   wire dma_response_valid;
   wire dma_response_ready;
   wire dma_response_partial;
   wire dma_req_sync_transfer_start;
   wire dma_req_last;
+  wire dma_req_islast;
 
   wire [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_DEST] dma_sg_out_dest_address;
   wire [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_SRC] dma_sg_out_src_address;
@@ -230,6 +256,21 @@ module axi_dmac_transfer #(
   wire dma_sg_in_req_ready;
   wire dma_sg_out_req_valid;
   wire dma_sg_out_req_ready;
+
+  wire [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_DEST] flock_req_dest_address;
+  wire [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_SRC] flock_req_src_address;
+  wire [DMA_LENGTH_WIDTH-1:0] flock_req_x_length;
+  wire [DMA_LENGTH_WIDTH-1:0] flock_req_y_length;
+  wire [DMA_LENGTH_WIDTH-1:0] flock_req_dest_stride;
+  wire [DMA_LENGTH_WIDTH-1:0] flock_req_src_stride;
+  wire flock_req_sync_transfer_start;
+  wire flock_req_last;
+
+  wire flock_req_eot;
+  wire [BYTES_PER_BURST_WIDTH:0] flock_req_measured_burst_length;
+  wire flock_response_partial;
+  wire flock_response_valid;
+  wire flock_response_ready;
 
   wire req_clk = ctrl_clk;
   wire req_resetn;
@@ -259,6 +300,9 @@ module axi_dmac_transfer #(
 
   wire abort_req;
   wire dma_eot;
+
+  wire transfer_2d_req_ready;
+  wire ext_sync_ready;
 
   axi_dmac_reset_manager #(
     .ASYNC_CLK_REQ_SRC (ASYNC_CLK_REQ_SRC),
@@ -310,6 +354,118 @@ module axi_dmac_transfer #(
   assign req_eot = ctrl_hwdesc ? (dma_eot & dma_sg_hwdesc_eot) : dma_eot;
   assign req_sg_desc_id = ctrl_hwdesc ? dma_sg_hwdesc_id : 'h00;
   assign dma_sg_in_req_valid = ctrl_hwdesc ? req_valid_gated : 1'b0;
+
+  /* FrameLock Interface */
+  axi_dmac_framelock #(
+    .DMA_AXI_ADDR_WIDTH (DMA_AXI_ADDR_WIDTH),
+    .DMA_LENGTH_WIDTH (DMA_LENGTH_WIDTH),
+    .BYTES_PER_BURST_WIDTH (BYTES_PER_BURST_WIDTH),
+    .BYTES_PER_BEAT_WIDTH_DEST (BYTES_PER_BEAT_WIDTH_DEST),
+    .BYTES_PER_BEAT_WIDTH_SRC (BYTES_PER_BEAT_WIDTH_SRC),
+    .ENABLE_FRAME_LOCK(ENABLE_FRAME_LOCK),
+    .FRAME_LOCK_MODE(FRAME_LOCK_MODE),
+    .MAX_NUM_FRAMES(MAX_NUM_FRAMES),
+    .MAX_NUM_FRAMES_MSB(MAX_NUM_FRAMES_MSB)
+  ) i_dmac_flock (
+    .req_aclk (req_clk),
+    .req_aresetn (req_resetn),
+
+    // Interface to UP
+    .req_valid (req_valid_gated),
+    .req_ready (req_ready_gated),
+    .req_dest_address (req_dest_address),
+    .req_src_address (req_src_address),
+    .req_x_length (req_x_length),
+    .req_y_length (req_y_length),
+    .req_dest_stride (req_dest_stride),
+    .req_src_stride (req_src_stride),
+    .req_flock_framenum(req_flock_framenum),
+    .req_flock_mode(req_flock_mode),
+    .req_flock_wait_master(req_flock_wait_master),
+    .req_flock_distance(req_flock_distance),
+    .req_flock_stride(req_flock_stride),
+    .req_flock_en(req_flock_en),
+    .req_sync_transfer_start (req_sync_transfer_start),
+    .req_last (req_last),
+    .req_cyclic (req_cyclic),
+
+    .req_eot (req_eot),
+    .req_measured_burst_length (req_measured_burst_length),
+    .req_response_partial (req_response_partial),
+    .req_response_valid (req_response_valid),
+    .req_response_ready (req_response_ready),
+
+    // Interface to 2D
+    .out_req_valid (flock_req_valid),
+    .out_req_ready (flock_req_ready),
+    .out_req_dest_address (flock_req_dest_address),
+    .out_req_src_address (flock_req_src_address),
+    .out_req_x_length (flock_req_x_length),
+    .out_req_y_length (flock_req_y_length),
+    .out_req_dest_stride (flock_req_dest_stride),
+    .out_req_src_stride (flock_req_src_stride),
+    .out_req_sync_transfer_start (flock_req_sync_transfer_start),
+    .out_req_last (flock_req_last),
+
+    .out_eot (flock_req_eot),
+    .out_measured_burst_length (flock_req_measured_burst_length),
+    .out_response_partial (flock_response_partial),
+    .out_response_valid (flock_response_valid),
+    .out_response_ready (flock_response_ready),
+
+    .m_frame_in (m_frame_in),
+    .m_frame_out (m_frame_out),
+    .s_frame_in (s_frame_in),
+    .s_frame_out (s_frame_out)
+    );
+
+  assign flock_req_ready = transfer_2d_req_ready && ext_sync_ready;
+  assign ext_sync_valid = flock_req_valid;
+
+  dmac_2d_transfer #(
+    .DMA_2D_TRANSFER (DMA_2D_TRANSFER),
+    .DMA_2D_TLAST_MODE (DMA_2D_TLAST_MODE),
+    .DMA_AXI_ADDR_WIDTH (DMA_AXI_ADDR_WIDTH),
+    .DMA_LENGTH_WIDTH (DMA_LENGTH_WIDTH),
+    .BYTES_PER_BURST_WIDTH (BYTES_PER_BURST_WIDTH),
+    .BYTES_PER_BEAT_WIDTH_DEST (BYTES_PER_BEAT_WIDTH_DEST),
+    .BYTES_PER_BEAT_WIDTH_SRC (BYTES_PER_BEAT_WIDTH_SRC)
+  ) i_2d_transfer (
+    .req_aclk (req_clk),
+    .req_aresetn (req_resetn),
+
+    .req_eot (flock_req_eot),
+    .req_measured_burst_length (flock_req_measured_burst_length),
+    .req_response_partial (flock_response_partial),
+    .req_response_valid (flock_response_valid),
+    .req_response_ready (flock_response_ready),
+
+    .req_valid (flock_req_valid),
+    .req_ready (transfer_2d_req_ready),
+    .req_dest_address (flock_req_dest_address),
+    .req_src_address (flock_req_src_address),
+    .req_x_length (flock_req_x_length),
+    .req_y_length (flock_req_y_length),
+    .req_dest_stride (flock_req_dest_stride),
+    .req_src_stride (flock_req_src_stride),
+    .req_sync_transfer_start (flock_req_sync_transfer_start),
+    .req_last (flock_req_last),
+
+    .out_abort_req (abort_req),
+    .out_req_valid (dma_req_valid),
+    .out_req_ready (dma_req_ready),
+    .out_req_dest_address (dma_req_dest_address),
+    .out_req_src_address (dma_req_src_address),
+    .out_req_length (dma_req_length),
+    .out_req_sync_transfer_start (dma_req_sync_transfer_start),
+    .out_req_last (dma_req_last),
+    .out_req_islast (dma_req_islast),
+    .out_eot (dma_req_eot),
+    .out_measured_burst_length (dma_req_measured_burst_length),
+    .out_response_partial (dma_response_partial),
+    .out_response_valid (dma_response_valid),
+    .out_response_ready (dma_response_ready)
+    );
 
   /* SG Interface */
   generate if (DMA_SG_TRANSFER == 1) begin
@@ -504,7 +660,8 @@ module axi_dmac_transfer #(
     .ENABLE_DIAGNOSTICS_IF(ENABLE_DIAGNOSTICS_IF),
     .ALLOW_ASYM_MEM (ALLOW_ASYM_MEM),
     .AXI_AXCACHE(AXI_AXCACHE),
-    .AXI_AXPROT(AXI_AXPROT)
+    .AXI_AXPROT(AXI_AXPROT),
+    .USE_EXT_SYNC (USE_EXT_SYNC)
   ) i_request_arb (
     .req_clk (req_clk),
     .req_resetn (req_resetn),
@@ -515,6 +672,7 @@ module axi_dmac_transfer #(
     .req_src_address (dma_req_src_address),
     .req_length (dma_req_length),
     .req_xlast (dma_req_last),
+    .req_islast (dma_req_islast),
     .req_sync_transfer_start (dma_req_sync_transfer_start),
 
     .eot (dma_req_eot),
@@ -590,6 +748,7 @@ module axi_dmac_transfer #(
     .m_axis_ready (m_axis_ready),
     .m_axis_valid (m_axis_valid),
     .m_axis_data (m_axis_data),
+    .m_axis_user (m_axis_user),
     .m_axis_last (m_axis_last),
     .m_axis_xfer_req (m_axis_xfer_req),
 
@@ -615,6 +774,12 @@ module axi_dmac_transfer #(
     .dbg_src_address_id (dbg_src_address_id),
     .dbg_src_data_id (dbg_src_data_id),
     .dbg_src_response_id (dbg_src_response_id),
+
+    .src_ext_sync (src_ext_sync),
+    .dest_ext_sync (dest_ext_sync),
+
+    .ext_sync_ready (ext_sync_ready),
+    .ext_sync_valid (ext_sync_valid),
 
     .dest_diag_level_bursts(dest_diag_level_bursts));
 
