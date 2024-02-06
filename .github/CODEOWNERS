@@ -145,6 +145,9 @@
 # Code owners for cn0577 folder
 /projects/cn0577/           iulia.moldovan@analog.com adrian.costina@analog.com
 
+# Code owners for cn0585_fmcz folder
+/projects/cn0585_fmcz/      paul.pop@analog.com adrian.costina@analog.com
+
 # Code owners for dac_fmc_ebz folder
 /projects/dac_fmc_ebz/      andrei.dragomir@analog.com bogdan.luncan@analog.com
 
