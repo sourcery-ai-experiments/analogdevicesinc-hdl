@@ -86,4 +86,3 @@ proc util_cpack_elab {} {
     set_interface_property adc_ch_$n associatedReset ""
   }
 }
-
