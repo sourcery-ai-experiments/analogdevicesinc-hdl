@@ -287,6 +287,7 @@ module axi_dmac_transfer #(
 
   wire abort_req;
   wire dma_eot;
+  wire dma_2d_eot;
 
   wire transfer_2d_req_ready;
   wire ext_sync_ready;
@@ -338,7 +339,7 @@ module axi_dmac_transfer #(
   assign req_valid_gated = req_enable & req_valid;
   assign req_ready = req_enable & req_ready_gated;
 
-  assign req_eot = ctrl_hwdesc ? (dma_eot & dma_sg_hwdesc_eot) : dma_eot;
+  assign req_eot = ctrl_hwdesc ? (dma_2d_eot & dma_sg_hwdesc_eot) : dma_2d_eot;
   assign req_sg_desc_id = ctrl_hwdesc ? dma_sg_hwdesc_id : 'h00;
   assign dma_sg_in_req_valid = ctrl_hwdesc ? req_valid_gated : 1'b0;
 
@@ -441,6 +442,7 @@ module axi_dmac_transfer #(
   wire flock_response_valid;
   wire flock_response_ready;
 
+  // TODO if no freamelock, assign dma_2d_eot == flock_req_eot
   axi_dmac_framelock #(
     .DMA_AXI_ADDR_WIDTH (DMA_AXI_ADDR_WIDTH),
     .DMA_LENGTH_WIDTH (DMA_LENGTH_WIDTH),
@@ -474,7 +476,7 @@ module axi_dmac_transfer #(
     .req_last (req_last),
     .req_cyclic (req_cyclic),
 
-    .req_eot (req_eot),
+    .req_eot (dma_2d_eot), //output
     .req_measured_burst_length (req_measured_burst_length),
     .req_response_partial (req_response_partial),
     .req_response_valid (req_response_valid),
@@ -492,7 +494,7 @@ module axi_dmac_transfer #(
     .out_req_sync_transfer_start (flock_req_sync_transfer_start),
     .out_req_last (flock_req_last),
 
-    .out_eot (flock_req_eot),
+    .out_eot (flock_req_eot), // input
     .out_measured_burst_length (flock_req_measured_burst_length),
     .out_response_partial (flock_response_partial),
     .out_response_valid (flock_response_valid),
@@ -518,7 +520,7 @@ module axi_dmac_transfer #(
     .req_aclk (req_clk),
     .req_aresetn (req_resetn),
 
-    .req_eot (flock_req_eot),
+    .req_eot (flock_req_eot), // output
     .req_measured_burst_length (flock_req_measured_burst_length),
     .req_response_partial (flock_response_partial),
     .req_response_valid (flock_response_valid),
@@ -544,7 +546,7 @@ module axi_dmac_transfer #(
     .out_req_sync_transfer_start (dma_req_sync_transfer_start),
     .out_req_last (dma_req_last),
     .out_req_islast (dma_req_islast),
-    .out_eot (dma_req_eot),
+    .out_eot (dma_req_eot), // input
     .out_measured_burst_length (dma_req_measured_burst_length),
     .out_response_partial (dma_response_partial),
     .out_response_valid (dma_response_valid),

@@ -804,6 +804,5 @@ module axi_dmac #(
   assign m_axis_strb = {DMA_DATA_WIDTH_DEST/8{1'b1}};
   assign m_axis_id = 'h0;
   assign m_axis_dest = 'h0;
-  assign m_axis_user = 'h0;
 
 endmodule
