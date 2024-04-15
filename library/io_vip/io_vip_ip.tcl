@@ -1,7 +1,12 @@
-# ip
+###############################################################################
+## Copyright (C) 2024 Analog Devices, Inc. All rights reserved.
+### SPDX short identifier: ADIBSD
+###############################################################################
 
-source ../scripts/adi_env.tcl
-source $ad_hdl_dir/library/scripts/adi_ip.tcl
+source ../../scripts/adi_env.tcl
+source $ad_hdl_dir/library/scripts/adi_ip_xilinx.tcl
+
+global VIVADO_IP_LIBRARY
 
 adi_ip_create io_vip
 adi_ip_files io_vip [list \

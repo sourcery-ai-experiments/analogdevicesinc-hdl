@@ -337,8 +337,7 @@ module axi_dmac_regmap #(
     .response_ready(response_ready));
 
   up_axi #(
-    .AXI_ADDRESS_WIDTH (12),
-    .ADDRESS_WIDTH (9)
+    .AXI_ADDRESS_WIDTH (12)
   ) i_up_axi (
     .up_rstn(s_axi_aresetn),
     .up_clk(s_axi_aclk),
