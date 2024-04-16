@@ -55,7 +55,6 @@ XILINX_LIB_DEPS += util_cdc
 
 XILINX_INTERFACE_DEPS += interfaces
 
-INTEL_DEPS += ../util_axis_fifo/address_sync.v
 INTEL_DEPS += ../util_axis_fifo/util_axis_fifo.v
 INTEL_DEPS += ../util_axis_fifo/util_axis_fifo_address_generator.v
 INTEL_DEPS += ../util_cdc/sync_bits.v

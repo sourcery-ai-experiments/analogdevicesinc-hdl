@@ -57,9 +57,11 @@ module axi_dmac_regmap #(
   parameter [3:0] AXI_AXCACHE = 4'b0011,
   parameter [2:0] AXI_AXPROT = 3'b000,
   parameter ENABLE_FRAME_LOCK = 0,
-  parameter FRAME_LOCK_MODE = 0,
-  parameter MAX_NUM_FRAMES_MSB = 2,
+  parameter DMA_2D_TLAST_MODE = 0,
+  parameter MAX_NUM_FRAMES = 8,
+  parameter USE_EXT_SYNC = 0,
   parameter HAS_AUTORUN = 0,
+  parameter MAX_NUM_FRAMES_MSB = 2,
   parameter DMAC_DEF_FLAGS = 0,
   parameter DMAC_DEF_SRC_ADDR = 0,
   parameter DMAC_DEF_DEST_ADDR = 0,
@@ -241,7 +243,7 @@ module axi_dmac_regmap #(
       9'h001: up_rdata <= ID;
       9'h002: up_rdata <= up_scratch;
       9'h003: up_rdata <= 32'h444d4143; // "DMAC"
-      9'h004: up_rdata <= {8'b0,
+      9'h004: up_rdata <= {MAX_NUM_FRAMES[4:0], DMA_2D_TLAST_MODE[0],  USE_EXT_SYNC[0], HAS_AUTORUN[0],
                            4'b0,BYTES_PER_BURST_WIDTH[3:0],
                            2'b0,DMA_TYPE_SRC[1:0],BYTES_PER_BEAT_WIDTH_SRC[3:0],
                            2'b0,DMA_TYPE_DEST[1:0],BYTES_PER_BEAT_WIDTH_DEST[3:0]};
@@ -281,7 +283,6 @@ module axi_dmac_regmap #(
     .DMA_SG_TRANSFER(DMA_SG_TRANSFER),
     .SYNC_TRANSFER_START(SYNC_TRANSFER_START),
     .ENABLE_FRAME_LOCK(ENABLE_FRAME_LOCK),
-    .FRAME_LOCK_MODE(FRAME_LOCK_MODE),
     .MAX_NUM_FRAMES_MSB(MAX_NUM_FRAMES_MSB),
     .HAS_AUTORUN(HAS_AUTORUN),
     .DMAC_DEF_FLAGS(DMAC_DEF_FLAGS),

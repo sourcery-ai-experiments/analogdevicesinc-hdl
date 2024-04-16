@@ -51,7 +51,6 @@ module axi_dmac_regmap_request #(
   parameter DMA_SG_TRANSFER = 0,
   parameter SYNC_TRANSFER_START = 0,
   parameter ENABLE_FRAME_LOCK = 0,
-  parameter FRAME_LOCK_MODE = 0,
   parameter MAX_NUM_FRAMES_MSB = 2,
   parameter HAS_AUTORUN = 0,
   parameter DMAC_DEF_FLAGS = 0,

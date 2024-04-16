@@ -84,31 +84,31 @@ INTERFACE_DESCRIPTION_1
 ENDREG
 
 FIELD
-[3:0] log2(''DMA_DATA_WIDTH_DEST''/8)
-BYTES_PER_BEAT_DEST_LOG2
+[31:27] ''MAX_NUM_FRAMES''
+MAX_NUM_FRAMES
 R
-Width of data bus on destination interface. Log2 of interface data widths in bytes.
+Max number of frames.
 ENDFIELD
 
 FIELD
-[5:4] ''DMA_TYPE_DEST''
-DMA_TYPE_DEST
+[26] ''DMA_2D_TLAST_MODE''
+DMA_2D_TLAST_MODE
 R
-Value of ''DMA_TYPE_DEST'' parameter.(0 - AXI MemoryMap, 1 -  AXI Stream, 2 - FIFO )
+TLAST behaviour for 2D transfer (0 - End of Frame; 1 - End of Line).
 ENDFIELD
 
 FIELD
-[11:8] log2(''DMA_DATA_WIDTH_SRC''/8)
-BYTES_PER_BEAT_SRC_LOG2
+[25] ''USE_EXT_SYNC''
+USE_EXT_SYNC
 R
-Width of data bus on source interface. Log2 of interface data widths in bytes.
+Use external sync.
 ENDFIELD
 
 FIELD
-[13:12] ''DMA_TYPE_SRC''
-DMA_TYPE_SRC
+[24] ''HAS_AUTORUN''
+HAS_AUTORUN
 R
-Value of ''DMA_TYPE_SRC'' parameter.(0 - AXI MemoryMap, 1 -  AXI Stream, 2 - FIFO )
+Run in the DMAC_DEF_FLAGS configuration (TODO DEPRECATED).
 ENDFIELD
 
 FIELD
@@ -119,6 +119,35 @@ Value of ''BYTES_PER_BURST_WIDTH'' interface parameter. Log2 of the real ''MAX_B
 The starting address of the transfer must be aligned with ''MAX_BYTES_PER_BURST'' to avoid crossing
 the 4kB address boundary.
 ENDFIELD
+
+FIELD
+[13:12] ''DMA_TYPE_SRC''
+DMA_TYPE_SRC
+R
+Value of ''DMA_TYPE_SRC'' parameter.(0 - AXI MemoryMap, 1 -  AXI Stream, 2 - FIFO )
+ENDFIELD
+
+FIELD
+[11:8] log2(''DMA_DATA_WIDTH_SRC''/8)
+BYTES_PER_BEAT_SRC_LOG2
+R
+Width of data bus on source interface. Log2 of interface data widths in bytes.
+ENDFIELD
+
+FIELD
+[5:4] ''DMA_TYPE_DEST''
+DMA_TYPE_DEST
+R
+Value of ''DMA_TYPE_DEST'' parameter.(0 - AXI MemoryMap, 1 -  AXI Stream, 2 - FIFO )
+ENDFIELD
+
+FIELD
+[3:0] log2(''DMA_DATA_WIDTH_DEST''/8)
+BYTES_PER_BEAT_DEST_LOG2
+R
+Width of data bus on destination interface. Log2 of interface data widths in bytes.
+ENDFIELD
+
 
 ############################################################################################
 ############################################################################################
@@ -298,12 +327,20 @@ FLAGS
 ENDREG
 
 FIELD
-[0] ''CYCLIC''
-CYCLIC
+[3] ''ENABLE_FRAME_LOCK''
+FLOCK
 RW
-Setting this field to 1 puts the DMA transfer into cyclic mode. In cyclic mode
-the controller will re-start a transfer again once it has finished. In cyclic
-mode no end-of-transfer interrupts will be generated.
+Setting this field to 1 puts the DMA transfer into framelock mode.
+In framelock mode the data is hold to compensate frames rates mismatch between source and
+sink channels.
+Parameter ENABLE_FRAME_LOCK must 1 to writing to this register to have an effect.
+ENDFIELD
+
+FIELD
+[2] 0x0
+PARTIAL_REPORTING_EN
+RW
+When setting this bit the length of partial transfers caused eventually by TLAST will be recorded.
 ENDFIELD
 
 FIELD
@@ -317,10 +354,12 @@ After its occurrence all descriptors are ignored until this bit is set.
 ENDFIELD
 
 FIELD
-[2] 0x0
-PARTIAL_REPORTING_EN
+[0] ''CYCLIC''
+CYCLIC
 RW
-When setting this bit the length of partial transfers caused eventually by TLAST will be recorded.
+Setting this field to 1 puts the DMA transfer into cyclic mode. In cyclic mode
+the controller will re-start a transfer again once it has finished. In cyclic
+mode no end-of-transfer interrupts will be generated.
 ENDFIELD
 
 ############################################################################################
