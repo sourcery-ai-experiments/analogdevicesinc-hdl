@@ -65,6 +65,8 @@ module dest_axi_stream #(
 
   input req_valid,
   output req_ready,
+  input req_sync_transfer_start,
+  input req_sync,
   input req_xlast,
 
   output response_valid,
@@ -81,10 +83,14 @@ module dest_axi_stream #(
 
   reg [ID_WIDTH-1:0] id = 'h0;
 
+  reg needs_sync = 1'b0;
+
   // Last beat of the burst
   wire fifo_last_beat;
   // Last beat of the segment
   wire fifo_eot_beat;
+
+  wire has_sync;
 
   // fifo_last == 1'b1 implies fifo_valid == 1'b1
   assign fifo_last_beat = fifo_ready & fifo_last;
@@ -94,10 +100,20 @@ module dest_axi_stream #(
   assign data_id = id;
   assign xfer_req = active;
 
-  assign m_axis_valid = fifo_valid & active;
-  assign fifo_ready = m_axis_ready & active;
+  assign has_sync = ~needs_sync | req_sync;
+
+  assign m_axis_valid = fifo_valid & has_sync & active;
+  assign fifo_ready = m_axis_ready & has_sync & active;
   assign m_axis_last = req_xlast_d & fifo_last & data_eot;
   assign m_axis_data = fifo_data;
+
+  always @(posedge s_axis_aclk) begin
+    if (req_ready == 1'b1) begin                                                                         
+      needs_sync <= req_sync_transfer_start;                                                             
+    end else if (fifo_ready == 1'b1) begin                                                              
+      needs_sync <= 1'b0;
+    end                                                                                                  
+  end
 
   always @(posedge s_axis_aclk) begin
     if (s_axis_aresetn == 1'b0) begin

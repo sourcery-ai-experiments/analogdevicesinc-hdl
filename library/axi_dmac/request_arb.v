@@ -71,6 +71,7 @@ module request_arb #(
   input [DMA_LENGTH_WIDTH-1:0] req_length,
   input req_xlast,
   input req_sync_transfer_start,
+  input req_sync,
 
   output eot,
   output [BYTES_PER_BURST_WIDTH-1:0] measured_burst_length,
@@ -507,6 +508,8 @@ module request_arb #(
 
     .req_valid(dest_req_valid),
     .req_ready(dest_req_ready),
+    .req_sync_transfer_start(req_sync_transfer_start),
+    .req_sync(req_sync),
     .req_xlast(dest_req_xlast),
 
     .response_valid(dest_response_valid),

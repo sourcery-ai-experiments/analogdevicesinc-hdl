@@ -365,9 +365,6 @@ ipgui::move_param -component $cc -order 4 $p -parent $src_group
 set_property -dict [list \
 	"display_name" "Transfer Start Synchronization Support" \
 ] $p
-set_property -dict [list \
-	"enablement_tcl_expr" "\$DMA_TYPE_SRC != 0" \
-] [ipx::get_user_parameters SYNC_TRANSFER_START -of_objects $cc]
 
 set p [ipgui::get_guiparamspec -name "DMA_AXI_PROTOCOL_SG" -component $cc]
 ipgui::move_param -component $cc -order 0 $p -parent $sg_group

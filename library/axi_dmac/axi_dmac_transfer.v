@@ -85,6 +85,7 @@ module axi_dmac_transfer #(
   input [DMA_LENGTH_WIDTH-1:0] req_dest_stride,
   input [DMA_LENGTH_WIDTH-1:0] req_src_stride,
   input req_sync_transfer_start,
+  input req_sync,
   input req_last,
 
   output req_eot,
@@ -516,6 +517,7 @@ module axi_dmac_transfer #(
     .req_length (dma_req_length),
     .req_xlast (dma_req_last),
     .req_sync_transfer_start (dma_req_sync_transfer_start),
+    .req_sync (req_sync),
 
     .eot (dma_req_eot),
     .measured_burst_length(dma_req_measured_burst_length),

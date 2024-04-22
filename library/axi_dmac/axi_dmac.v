@@ -102,6 +102,9 @@ module axi_dmac #(
   // Interrupt
   output irq,
 
+  // Transfer Start Sync Signal
+  input sync,
+
   // Master AXI interface
   input                                    m_dest_axi_aclk,
   input                                    m_dest_axi_aresetn,
@@ -561,6 +564,7 @@ module axi_dmac #(
     .req_dest_stride(up_dma_req_dest_stride),
     .req_src_stride(up_dma_req_src_stride),
     .req_sync_transfer_start(up_dma_req_sync_transfer_start),
+    .req_sync(sync),
     .req_last(up_dma_req_last),
 
     .req_eot(up_req_eot),
