@@ -39,7 +39,6 @@ module axi_dmac_framelock #(
   parameter BYTES_PER_BURST_WIDTH = 7,
   parameter BYTES_PER_BEAT_WIDTH_SRC = 3,
   parameter BYTES_PER_BEAT_WIDTH_DEST = 3,
-  parameter ENABLE_FRAME_LOCK = 0,
   parameter FRAME_LOCK_MODE = 0, // 0 - Master (MM writer) ; 1 - Slave (MM reader)
   parameter MAX_NUM_FRAMES = 4,
   parameter MAX_NUM_FRAMES_MSB = 2
@@ -67,10 +66,6 @@ module axi_dmac_framelock #(
   input req_last,
   input req_cyclic,
 
-  output req_eot,
-  output [BYTES_PER_BURST_WIDTH:0] req_measured_burst_length,
-  output req_response_partial,
-  output req_response_valid,
   input req_response_ready,
 
   // Interface to 2D
@@ -78,18 +73,11 @@ module axi_dmac_framelock #(
   input out_req_ready,
   output [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_DEST] out_req_dest_address,
   output [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_SRC] out_req_src_address,
-  output [DMA_LENGTH_WIDTH-1:0] out_req_x_length,
-  output [DMA_LENGTH_WIDTH-1:0] out_req_y_length,
-  output [DMA_LENGTH_WIDTH-1:0] out_req_dest_stride,
-  output [DMA_LENGTH_WIDTH-1:0] out_req_src_stride,
-  output out_req_sync_transfer_start,
-  output out_req_last,
 
   input out_eot,
   input [BYTES_PER_BURST_WIDTH:0] out_measured_burst_length,
   input out_response_partial,
   input out_response_valid,
-  output out_response_ready,
 
   // Frame lock interface
   // Master mode
@@ -101,44 +89,22 @@ module axi_dmac_framelock #(
 
 );
 
-// Pass through the whole response interface
-//
-assign req_eot = out_eot;
-assign req_measured_burst_length = out_measured_burst_length;
-assign req_response_partial = out_response_partial;
-assign req_response_valid = out_response_valid;
-assign out_response_ready = req_response_ready;
-
-// Pass through part of the request interface
-//
-assign out_req_x_length = req_x_length;
-assign out_req_y_length = req_y_length;
-assign out_req_dest_stride = req_dest_stride;
-assign out_req_src_stride = req_src_stride;
-assign out_req_sync_transfer_start = req_sync_transfer_start;
-assign out_req_last = req_last;
-
-
-generate if (ENABLE_FRAME_LOCK == 1) begin
-
   localparam BYTES_PER_BEAT_WIDTH = FRAME_LOCK_MODE ?
-                                      BYTES_PER_BEAT_WIDTH_SRC :
-                                      BYTES_PER_BEAT_WIDTH_DEST;
-
-  reg [MAX_NUM_FRAMES_MSB-1:0] transfer_id = 'h0;
-  reg [MAX_NUM_FRAMES_MSB-1:0] cur_frame_id;
-  wire resp_eot;
+                                    BYTES_PER_BEAT_WIDTH_SRC :
+                                    BYTES_PER_BEAT_WIDTH_DEST;
 
   reg [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH] req_address = 'h0;
+  reg [MAX_NUM_FRAMES_MSB-1:0] transfer_id = 'h0;
+  reg [MAX_NUM_FRAMES_MSB-1:0] cur_frame_id;
+  reg prev_buf_done;
+  reg wait_distance = 1'b0;
 
   wire [MAX_NUM_FRAMES_MSB:0] transfer_id_p1;
 
-  reg wait_distance = 1'b0;
+  wire resp_eot;
   wire calc_enable;
   wire calc_done;
   wire enable_out_req;
-
-  reg prev_buf_done;
 
   // Calculate new buffer only after the current one completed
   always @(posedge req_aclk) begin
@@ -187,9 +153,7 @@ generate if (ENABLE_FRAME_LOCK == 1) begin
     end
   end
 
-
-  assign resp_eot = out_response_valid & out_response_ready & out_eot;
-
+  assign resp_eot = out_response_valid & req_response_ready & out_eot;
 
   always @(posedge req_aclk) begin
     if (req_aresetn == 1'b0) begin
@@ -342,21 +306,5 @@ generate if (ENABLE_FRAME_LOCK == 1) begin
                             ((m_frame_ready | ~req_flock_mode) & ~wait_distance);
 
   end
-
-
-end else begin
-  always @(*) begin
-    out_req_valid = req_valid;
-    req_ready = out_req_ready;
-  end
-
-  assign out_req_dest_address = req_dest_address;
-  assign out_req_src_address = req_src_address;
-
-  assign m_frame_out = 'h0;
-  assign s_frame_out = 'h0;
-
-end
-endgenerate
 
 endmodule

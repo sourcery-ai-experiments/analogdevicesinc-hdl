@@ -25,6 +25,7 @@ Features
 - Cyclic transfers
 - 2D transfers
 - Scatter-Gather transfers
+- Framelock
 
 Utilization
 --------------------------------------------------------------------------------
@@ -652,6 +653,13 @@ interrupt events as the simple transfers. However, the scatter-gather transfers
 have the distinct advantage of generating fewer interrupts by treating the
 chained descriptor transfers as a single transfer, thus improving the performance
 of the application.
+
+Framelock
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. todo::
+
+   Do this section
 
 Transfer Start Synchronization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
