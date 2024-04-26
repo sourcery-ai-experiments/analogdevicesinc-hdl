@@ -1216,7 +1216,6 @@ module request_arb #(
 
     // Interface to requester
     .ext_sync_ready (ext_sync_ready),
-    .ext_sync_valid (ext_sync_valid)
-  );
+    .ext_sync_valid (ext_sync_valid));
 
 endmodule

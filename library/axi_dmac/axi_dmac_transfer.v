@@ -287,6 +287,9 @@ module axi_dmac_transfer #(
   wire abort_req;
   wire dma_eot;
 
+  wire ext_sync_ready;
+  wire ext_sync_valid;
+
   axi_dmac_reset_manager #(
     .ASYNC_CLK_REQ_SRC (ASYNC_CLK_REQ_SRC),
     .ASYNC_CLK_SRC_DEST (ASYNC_CLK_SRC_DEST),
@@ -435,6 +438,10 @@ module axi_dmac_transfer #(
   wire flock_req_ready;
   wire dma_2d_req_valid;
   wire dma_2d_req_ready;
+  wire dma_2d_req_ready_w;
+
+  assign dma_2d_req_ready_w = dma_2d_req_ready && ext_sync_ready;
+  assign ext_sync_valid = dma_2d_req_valid;
 
   assign flock_dest_address = ctrl_hwdesc ? dma_sg_out_dest_address : req_dest_address;
   assign flock_src_address = ctrl_hwdesc ? dma_sg_out_src_address : req_src_address;
@@ -487,7 +494,7 @@ module axi_dmac_transfer #(
 
     // Interface to 2D
     .out_req_valid (dma_2d_req_valid),
-    .out_req_ready (dma_2d_req_ready),
+    .out_req_ready (dma_2d_req_ready_w),
     .out_req_dest_address (dma_2d_dest_address),
     .out_req_src_address (dma_2d_src_address),
 
@@ -504,7 +511,7 @@ module axi_dmac_transfer #(
 
   end else begin
   assign dma_2d_req_valid = flock_req_valid;
-  assign flock_req_ready = dma_2d_req_ready;
+  assign flock_req_ready = dma_2d_req_ready_w;
 
   assign dma_2d_dest_address = flock_dest_address;
   assign dma_2d_src_address = flock_src_address;
@@ -555,12 +562,15 @@ module axi_dmac_transfer #(
     .out_response_ready (dma_response_ready));
 
   end else begin
+  /* External Sync */
+  assign dma_req_ready_w = dma_req_ready && ext_sync_ready;
+  assign ext_sync_valid = dma_req_valid;
 
   /* Request */
   assign dma_req_valid = ctrl_hwdesc ? dma_sg_out_req_valid : req_valid_gated;
   assign req_ready_gated = ctrl_hwdesc ? dma_sg_in_req_ready : dma_req_ready;
   assign dma_eot = dma_req_eot;
-  assign dma_sg_out_req_ready = dma_req_ready;
+  assign dma_sg_out_req_ready = dma_req_ready_w;
 
   assign dma_req_dest_address = ctrl_hwdesc ? dma_sg_out_dest_address : req_dest_address;
   assign dma_req_src_address = ctrl_hwdesc ? dma_sg_out_src_address : req_src_address;
@@ -712,6 +722,12 @@ module axi_dmac_transfer #(
     .dbg_src_address_id (dbg_src_address_id),
     .dbg_src_data_id (dbg_src_data_id),
     .dbg_src_response_id (dbg_src_response_id),
+
+    .src_ext_sync (src_ext_sync),
+    .dest_ext_sync (dest_ext_sync),
+
+    .ext_sync_ready (ext_sync_ready),
+    .ext_sync_valid (ext_sync_valid),
 
     .dest_diag_level_bursts(dest_diag_level_bursts));
 

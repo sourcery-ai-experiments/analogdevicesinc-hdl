@@ -62,7 +62,7 @@ function void set_io(int o);
   io <= o[WIDTH-1:0];
 endfunction
 
-// wait and set  
+// wait and set
 task setw_io(int o, int w=1);
   repeat(w) wait_posedge_clk();
   set_io(o);
