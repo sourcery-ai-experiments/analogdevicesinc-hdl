@@ -51,7 +51,7 @@ module axi_dmac_regmap_request #(
   parameter DMA_SG_TRANSFER = 0,
   parameter SYNC_TRANSFER_START = 0,
   parameter ENABLE_FRAME_LOCK = 0,
-  parameter MAX_NUM_FRAMES_MSB = 2,
+  parameter MAX_NUM_FRAMES_WIDTH = 2,
   parameter HAS_AUTORUN = 0,
   parameter DMAC_DEF_FLAGS = 0,
   parameter DMAC_DEF_SRC_ADDR = 0,
@@ -92,10 +92,10 @@ module axi_dmac_regmap_request #(
   output [DMA_LENGTH_WIDTH-1:0] request_y_length,
   output [DMA_LENGTH_WIDTH-1:0] request_dest_stride,
   output [DMA_LENGTH_WIDTH-1:0] request_src_stride,
-  output [MAX_NUM_FRAMES_MSB:0] request_flock_framenum,
+  output [MAX_NUM_FRAMES_WIDTH:0] request_flock_framenum,
   output                        request_flock_mode,
   output                        request_flock_wait_master,
-  output [MAX_NUM_FRAMES_MSB:0] request_flock_distance,
+  output [MAX_NUM_FRAMES_WIDTH:0] request_flock_distance,
   output [DMA_AXI_ADDR_WIDTH-1:0] request_flock_stride,
   output request_flock_en,
   output request_sync_transfer_start,
@@ -132,7 +132,7 @@ module axi_dmac_regmap_request #(
       DMAC_DEF_FLAGS[3];
 
   // DMA transfer signals
-  reg up_dma_req_valid = HAS_AUTORUN[0];
+  reg up_dma_req_valid = HAS_AUTORUN == 1;
   wire up_dma_req_ready;
 
   reg [1:0] up_transfer_id = 2'b0;
@@ -233,10 +233,10 @@ module axi_dmac_regmap_request #(
     9'h115: up_rdata <= response_sg_desc_id;
     9'h116: begin
               up_rdata <= 'h0;
-              up_rdata[MAX_NUM_FRAMES_MSB:0] <= request_flock_framenum;
+              up_rdata[MAX_NUM_FRAMES_WIDTH:0] <= request_flock_framenum;
               up_rdata[8] <= request_flock_mode;
               up_rdata[9] <= request_flock_wait_master;
-              up_rdata[16 +:(MAX_NUM_FRAMES_MSB+1)] <= request_flock_distance;
+              up_rdata[16 +:(MAX_NUM_FRAMES_WIDTH+1)] <= request_flock_distance;
             end
     9'h117: up_rdata <= request_flock_stride;
     9'h11f: up_rdata <= {request_sg_address[ADDR_LOW_MSB:BYTES_PER_BEAT_WIDTH_SG],{BYTES_PER_BEAT_WIDTH_SG{1'b0}}};
@@ -286,20 +286,20 @@ module axi_dmac_regmap_request #(
   generate
   if (ENABLE_FRAME_LOCK == 1) begin
     localparam DMAC_DEF_FLOCK_CFG_FNUM = (HAS_AUTORUN == 0) ? 'h00 :
-      DMAC_DEF_FLOCK_CFG[MAX_NUM_FRAMES_MSB:0];
+      DMAC_DEF_FLOCK_CFG[MAX_NUM_FRAMES_WIDTH:0];
     localparam DMAC_DEF_FLOCK_CFG_MODE = (HAS_AUTORUN == 0) ? 'h0 :
       DMAC_DEF_FLOCK_CFG[8];
     localparam DMAC_DEF_FLOCK_CFG_WAIT_MASTER = (HAS_AUTORUN == 0) ? 'h0 :
       DMAC_DEF_FLOCK_CFG[9];
     localparam DMAC_DEF_FLOCK_CFG_DIST = (HAS_AUTORUN == 0) ? 'h00 :
-      DMAC_DEF_FLOCK_CFG[16 +: (MAX_NUM_FRAMES_MSB+1)];
+      DMAC_DEF_FLOCK_CFG[16 +: (MAX_NUM_FRAMES_WIDTH+1)];
     localparam DMAC_DEF_FLOCK_STRIDE_LOC = (HAS_AUTORUN == 0) ? 'h00 :
       DMAC_DEF_FLOCK_STRIDE;
 
-    reg [MAX_NUM_FRAMES_MSB:0] up_dma_flock_framenum = DMAC_DEF_FLOCK_CFG_FNUM;
+    reg [MAX_NUM_FRAMES_WIDTH:0] up_dma_flock_framenum = DMAC_DEF_FLOCK_CFG_FNUM;
     reg                          up_dma_flock_mode = DMAC_DEF_FLOCK_CFG_MODE;
     reg                          up_dma_flock_wait_master = DMAC_DEF_FLOCK_CFG_WAIT_MASTER;
-    reg [MAX_NUM_FRAMES_MSB:0] up_dma_flock_distance = DMAC_DEF_FLOCK_CFG_DIST;
+    reg [MAX_NUM_FRAMES_WIDTH:0] up_dma_flock_distance = DMAC_DEF_FLOCK_CFG_DIST;
     reg [DMA_AXI_ADDR_WIDTH-1:0] up_dma_flock_stride = DMAC_DEF_FLOCK_STRIDE_LOC;
 
     always @(posedge clk) begin
@@ -312,10 +312,10 @@ module axi_dmac_regmap_request #(
       end else if (up_wreq == 1'b1) begin
         case (up_waddr)
           9'h115: begin
-            up_dma_flock_framenum <= up_wdata[MAX_NUM_FRAMES_MSB:0];
+            up_dma_flock_framenum <= up_wdata[MAX_NUM_FRAMES_WIDTH:0];
             up_dma_flock_mode <= up_wdata[8];
             up_dma_flock_wait_master <= up_wdata[9];
-            up_dma_flock_distance <= up_wdata[16 +: (MAX_NUM_FRAMES_MSB+1)];
+            up_dma_flock_distance <= up_wdata[16 +: (MAX_NUM_FRAMES_WIDTH+1)];
           end
           9'h116: up_dma_flock_stride <= up_wdata[DMA_AXI_ADDR_WIDTH-1:0];
         endcase

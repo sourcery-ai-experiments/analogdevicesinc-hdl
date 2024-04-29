@@ -61,7 +61,7 @@ module axi_dmac_regmap #(
   parameter MAX_NUM_FRAMES = 8,
   parameter USE_EXT_SYNC = 0,
   parameter HAS_AUTORUN = 0,
-  parameter MAX_NUM_FRAMES_MSB = 2,
+  parameter MAX_NUM_FRAMES_WIDTH = 2,
   parameter DMAC_DEF_FLAGS = 0,
   parameter DMAC_DEF_SRC_ADDR = 0,
   parameter DMAC_DEF_DEST_ADDR = 0,
@@ -105,7 +105,7 @@ module axi_dmac_regmap #(
   output reg irq,
 
   // Control interface
-  output reg ctrl_enable = HAS_AUTORUN[0],
+  output reg ctrl_enable = HAS_AUTORUN == 1,
   output reg ctrl_pause = 1'b0,
   output reg ctrl_hwdesc = 1'b0,
 
@@ -119,10 +119,10 @@ module axi_dmac_regmap #(
   output [DMA_LENGTH_WIDTH-1:0] request_y_length,
   output [DMA_LENGTH_WIDTH-1:0] request_dest_stride,
   output [DMA_LENGTH_WIDTH-1:0] request_src_stride,
-  output [MAX_NUM_FRAMES_MSB:0] request_flock_framenum,
+  output [MAX_NUM_FRAMES_WIDTH:0] request_flock_framenum,
   output                        request_flock_mode,
   output                        request_flock_wait_master,
-  output [MAX_NUM_FRAMES_MSB:0] request_flock_distance,
+  output [MAX_NUM_FRAMES_WIDTH:0] request_flock_distance,
   output [DMA_AXI_ADDR_WIDTH-1:0] request_flock_stride,
   output request_flock_en,
   output request_sync_transfer_start,
@@ -201,7 +201,7 @@ module axi_dmac_regmap #(
 
   always @(posedge s_axi_aclk) begin
     if (s_axi_aresetn == 1'b0) begin
-      ctrl_enable <= HAS_AUTORUN[0];
+      ctrl_enable <= HAS_AUTORUN == 1;
       ctrl_pause <= 1'b0;
       ctrl_hwdesc <= 1'b0;
       up_irq_mask <= 2'b11;
@@ -283,7 +283,7 @@ module axi_dmac_regmap #(
     .DMA_SG_TRANSFER(DMA_SG_TRANSFER),
     .SYNC_TRANSFER_START(SYNC_TRANSFER_START),
     .ENABLE_FRAME_LOCK(ENABLE_FRAME_LOCK),
-    .MAX_NUM_FRAMES_MSB(MAX_NUM_FRAMES_MSB),
+    .MAX_NUM_FRAMES_WIDTH(MAX_NUM_FRAMES_WIDTH),
     .HAS_AUTORUN(HAS_AUTORUN),
     .DMAC_DEF_FLAGS(DMAC_DEF_FLAGS),
     .DMAC_DEF_SRC_ADDR(DMAC_DEF_SRC_ADDR),

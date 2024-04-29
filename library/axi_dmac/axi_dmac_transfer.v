@@ -71,7 +71,7 @@ module axi_dmac_transfer #(
   parameter ENABLE_FRAME_LOCK = 0,
   parameter FRAME_LOCK_MODE = 0,
   parameter MAX_NUM_FRAMES = 4,
-  parameter MAX_NUM_FRAMES_MSB = 2,
+  parameter MAX_NUM_FRAMES_WIDTH = 2,
   parameter USE_EXT_SYNC = 0
 ) (
   input ctrl_clk,
@@ -91,10 +91,10 @@ module axi_dmac_transfer #(
   input [DMA_LENGTH_WIDTH-1:0] req_y_length,
   input [DMA_LENGTH_WIDTH-1:0] req_dest_stride,
   input [DMA_LENGTH_WIDTH-1:0] req_src_stride,
-  input [MAX_NUM_FRAMES_MSB:0] req_flock_framenum,
-  input                        req_flock_mode,
-  input                        req_flock_wait_master,
-  input [MAX_NUM_FRAMES_MSB:0] req_flock_distance,
+  input [MAX_NUM_FRAMES_WIDTH:0] req_flock_framenum,
+  input                          req_flock_mode,
+  input                          req_flock_wait_master,
+  input [MAX_NUM_FRAMES_WIDTH:0] req_flock_distance,
   input [DMA_AXI_ADDR_WIDTH-1:0] req_flock_stride,
   input req_flock_en,
   input req_sync_transfer_start,
@@ -218,11 +218,11 @@ module axi_dmac_transfer #(
 
   // Frame lock interface
   // Master mode
-  input  [MAX_NUM_FRAMES_MSB:0] m_frame_in,
-  output [MAX_NUM_FRAMES_MSB:0] m_frame_out,
+  input  [MAX_NUM_FRAMES_WIDTH:0] m_frame_in,
+  output [MAX_NUM_FRAMES_WIDTH:0] m_frame_out,
   // Slave mode
-  input  [MAX_NUM_FRAMES_MSB:0] s_frame_in,
-  output [MAX_NUM_FRAMES_MSB:0] s_frame_out,
+  input  [MAX_NUM_FRAMES_WIDTH:0] s_frame_in,
+  output [MAX_NUM_FRAMES_WIDTH:0] s_frame_out,
 
   // External sync interface
   input src_ext_sync,
@@ -244,6 +244,7 @@ module axi_dmac_transfer #(
   wire dma_response_partial;
   wire dma_req_sync_transfer_start;
   wire dma_req_last;
+  wire dma_req_islast;
 
   wire [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_DEST] dma_sg_out_dest_address;
   wire [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_SRC] dma_sg_out_src_address;
@@ -459,13 +460,11 @@ module axi_dmac_transfer #(
   /* FrameLock Interface */
   axi_dmac_framelock #(
     .DMA_AXI_ADDR_WIDTH (DMA_AXI_ADDR_WIDTH),
-    .DMA_LENGTH_WIDTH (DMA_LENGTH_WIDTH),
-    .BYTES_PER_BURST_WIDTH (BYTES_PER_BURST_WIDTH),
     .BYTES_PER_BEAT_WIDTH_DEST (BYTES_PER_BEAT_WIDTH_DEST),
     .BYTES_PER_BEAT_WIDTH_SRC (BYTES_PER_BEAT_WIDTH_SRC),
     .FRAME_LOCK_MODE(FRAME_LOCK_MODE),
     .MAX_NUM_FRAMES(MAX_NUM_FRAMES),
-    .MAX_NUM_FRAMES_MSB(MAX_NUM_FRAMES_MSB)
+    .MAX_NUM_FRAMES_WIDTH(MAX_NUM_FRAMES_WIDTH)
   ) i_dmac_flock (
     .req_aclk (req_clk),
     .req_aresetn (req_resetn),
@@ -475,10 +474,6 @@ module axi_dmac_transfer #(
     .req_ready (flock_req_ready),
     .req_dest_address (flock_dest_address),
     .req_src_address (flock_src_address),
-    .req_x_length (dma_2d_x_length),
-    .req_y_length (dma_2d_y_length),
-    .req_dest_stride (dma_2d_dst_stride),
-    .req_src_stride (dma_2d_src_stride),
 
     .req_flock_framenum (req_flock_framenum),
     .req_flock_mode (req_flock_mode),
@@ -486,8 +481,6 @@ module axi_dmac_transfer #(
     .req_flock_distance (req_flock_distance),
     .req_flock_stride (req_flock_stride),
     .req_flock_en (req_flock_en),
-    .req_sync_transfer_start (req_sync_transfer_start),
-    .req_last (req_last),
     .req_cyclic (req_cyclic),
 
     .req_response_ready (req_response_ready),
@@ -499,8 +492,6 @@ module axi_dmac_transfer #(
     .out_req_src_address (dma_2d_src_address),
 
     .out_eot (dma_2d_eot),
-    .out_measured_burst_length (req_measured_burst_length),
-    .out_response_partial (req_response_partial),
     .out_response_valid (req_response_valid),
 
     .m_frame_in (m_frame_in),
@@ -555,6 +546,7 @@ module axi_dmac_transfer #(
     .out_req_length (dma_req_length),
     .out_req_sync_transfer_start (dma_req_sync_transfer_start),
     .out_req_last (dma_req_last),
+    .out_req_islast (dma_req_islast),
     .out_eot (dma_req_eot),
     .out_measured_burst_length (dma_req_measured_burst_length),
     .out_response_partial (dma_response_partial),
@@ -622,6 +614,7 @@ module axi_dmac_transfer #(
     .req_src_address (dma_req_src_address),
     .req_length (dma_req_length),
     .req_xlast (dma_req_last),
+    .req_islast (dma_req_islast),
     .req_sync_transfer_start (dma_req_sync_transfer_start),
 
     .eot (dma_req_eot),

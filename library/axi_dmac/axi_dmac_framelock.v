@@ -35,14 +35,11 @@
 
 module axi_dmac_framelock #(
   parameter DMA_AXI_ADDR_WIDTH = 32,
-  parameter DMA_LENGTH_WIDTH = 24,
-  parameter BYTES_PER_BURST_WIDTH = 7,
-  parameter BYTES_PER_BEAT_WIDTH_SRC = 3,
   parameter BYTES_PER_BEAT_WIDTH_DEST = 3,
-  parameter FRAME_LOCK_MODE = 0, // 0 - Master (MM writer) ; 1 - Slave (MM reader)
-  parameter MAX_NUM_FRAMES = 4,
-  parameter MAX_NUM_FRAMES_MSB = 2
-
+  parameter BYTES_PER_BEAT_WIDTH_SRC = 3,
+  parameter FRAME_LOCK_MODE =  0, // 0 - Master (MM writer) ; 1 - Slave (MM reader)
+  parameter MAX_NUM_FRAMES = 16,
+  parameter MAX_NUM_FRAMES_WIDTH = 4
 ) (
   input req_aclk,
   input req_aresetn,
@@ -52,18 +49,13 @@ module axi_dmac_framelock #(
   output reg req_ready,
   input [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_DEST] req_dest_address,
   input [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_SRC] req_src_address,
-  input [DMA_LENGTH_WIDTH-1:0] req_x_length,
-  input [DMA_LENGTH_WIDTH-1:0] req_y_length,
-  input [DMA_LENGTH_WIDTH-1:0] req_dest_stride,
-  input [DMA_LENGTH_WIDTH-1:0] req_src_stride,
-  input [MAX_NUM_FRAMES_MSB:0] req_flock_framenum,
-  input                        req_flock_mode,  // 0 - Dynamic. 1 - Simple
-  input                        req_flock_wait_master,
-  input [MAX_NUM_FRAMES_MSB:0] req_flock_distance,
+
+  input [MAX_NUM_FRAMES_WIDTH:0] req_flock_framenum,
+  input                          req_flock_mode,  // 0 - Dynamic. 1 - Simple
+  input                          req_flock_wait_master,
+  input [MAX_NUM_FRAMES_WIDTH:0] req_flock_distance,
   input [DMA_AXI_ADDR_WIDTH-1:0] req_flock_stride,
   input req_flock_en,
-  input req_sync_transfer_start,
-  input req_last,
   input req_cyclic,
 
   input req_response_ready,
@@ -75,17 +67,15 @@ module axi_dmac_framelock #(
   output [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH_SRC] out_req_src_address,
 
   input out_eot,
-  input [BYTES_PER_BURST_WIDTH:0] out_measured_burst_length,
-  input out_response_partial,
   input out_response_valid,
 
   // Frame lock interface
   // Master mode
-  input  [MAX_NUM_FRAMES_MSB:0] m_frame_in,
-  output [MAX_NUM_FRAMES_MSB:0] m_frame_out,
+  input  [MAX_NUM_FRAMES_WIDTH:0] m_frame_in,
+  output [MAX_NUM_FRAMES_WIDTH:0] m_frame_out,
   // Slave mode
-  input  [MAX_NUM_FRAMES_MSB:0] s_frame_in,
-  output [MAX_NUM_FRAMES_MSB:0] s_frame_out
+  input  [MAX_NUM_FRAMES_WIDTH:0] s_frame_in,  // {valid, id}
+  output [MAX_NUM_FRAMES_WIDTH:0] s_frame_out  // {valid, id}
 
 );
 
@@ -94,12 +84,11 @@ module axi_dmac_framelock #(
                                     BYTES_PER_BEAT_WIDTH_DEST;
 
   reg [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH] req_address = 'h0;
-  reg [MAX_NUM_FRAMES_MSB-1:0] transfer_id = 'h0;
-  reg [MAX_NUM_FRAMES_MSB-1:0] cur_frame_id;
+  reg [MAX_NUM_FRAMES_WIDTH-1:0] transfer_id = 'h0;
+  reg [MAX_NUM_FRAMES_WIDTH-1:0] cur_frame_id;
   reg prev_buf_done;
-  reg wait_distance = 1'b0;
 
-  wire [MAX_NUM_FRAMES_MSB:0] transfer_id_p1;
+  wire [MAX_NUM_FRAMES_WIDTH:0] transfer_id_p1;
 
   wire resp_eot;
   wire calc_enable;
@@ -139,7 +128,7 @@ module axi_dmac_framelock #(
         transfer_id <= 'h0;
         req_address <= FRAME_LOCK_MODE ? req_src_address : req_dest_address;
       end else begin
-        transfer_id <= transfer_id_p1[MAX_NUM_FRAMES_MSB-1:0];
+        transfer_id <= transfer_id_p1[MAX_NUM_FRAMES_WIDTH-1:0];
         req_address <= req_address + req_flock_stride[DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH];
       end
     end
@@ -172,16 +161,12 @@ module axi_dmac_framelock #(
   assign out_req_src_address = ~FRAME_LOCK_MODE ? 'h0 : req_address;
   assign out_req_dest_address = FRAME_LOCK_MODE ? 'h0 : req_address;
 
-  reg frame_id_vld = 1'b0;
-  always @(posedge req_aclk) begin
-    frame_id_vld <= calc_enable & calc_done;
-  end
 
-  if (FRAME_LOCK_MODE == 0) begin
+  generate if (FRAME_LOCK_MODE == 0) begin
     // Master mode logic
     reg slave_started;
 
-    wire [MAX_NUM_FRAMES_MSB-1:0] s_frame_id;
+    wire [MAX_NUM_FRAMES_WIDTH-1:0] s_frame_id;
     wire s_frame_id_vld;
 
     // The master will iterate over the buffers one by one in a cyclic way
@@ -189,8 +174,8 @@ module axi_dmac_framelock #(
     // In simple mode will not look at the slave.
 
     assign m_frame_out = {resp_eot, cur_frame_id};
-    assign s_frame_id = m_frame_in[MAX_NUM_FRAMES_MSB-1:0];
-    assign s_frame_id_vld = m_frame_in[MAX_NUM_FRAMES_MSB];
+    assign s_frame_id = m_frame_in[MAX_NUM_FRAMES_WIDTH-1:0];
+    assign s_frame_id_vld = m_frame_in[MAX_NUM_FRAMES_WIDTH];
 
     assign calc_done = s_frame_id != transfer_id ||
                        slave_started == 1'b0 ||
@@ -213,22 +198,26 @@ module axi_dmac_framelock #(
   end else begin
     // Slave mode logic
 
-    wire [MAX_NUM_FRAMES_MSB-1:0] target_id;
-    wire [MAX_NUM_FRAMES_MSB-1:0] m_frame_id;
+    wire [MAX_NUM_FRAMES_WIDTH-1:0] target_id;
+    wire [MAX_NUM_FRAMES_WIDTH-1:0] m_frame_id;
     wire m_frame_id_vld;
+
+    reg frame_id_vld = 1'b0;
+    reg wait_distance = 1'b0;
 
     // The slave will stay behind and try to keep up with the master at a distance.
     // This will be done either by repeating or skipping buffers depending on the
     // frame rate relationship of source and sink.
-    //
 
     assign s_frame_out = {frame_id_vld, cur_frame_id};
-    assign m_frame_id = s_frame_in[MAX_NUM_FRAMES_MSB-1:0];
-    assign m_frame_id_vld = s_frame_in[MAX_NUM_FRAMES_MSB];
-
+    assign m_frame_id = s_frame_in[MAX_NUM_FRAMES_WIDTH-1:0];
+    assign m_frame_id_vld = s_frame_in[MAX_NUM_FRAMES_WIDTH];
 
     assign calc_done = target_id == transfer_id;
 
+    always @(posedge req_aclk) begin
+      frame_id_vld <= calc_enable & calc_done;
+    end
     // If 'wait for master' is enabled the slave will start to operate only
     // after the master starts to write the frame at the programmed distance.
     //
@@ -238,7 +227,7 @@ module axi_dmac_framelock #(
       end else if (req_valid & req_ready) begin
         wait_distance <= req_cyclic && req_flock_en;
       end else if (~req_ready) begin
-        if ((m_frame_id == req_flock_distance) && m_frame_id_vld) begin
+        if (({1'b0, m_frame_id} == req_flock_distance) && m_frame_id_vld) begin
           wait_distance <= 1'b0;
         end
       end
@@ -249,11 +238,11 @@ module axi_dmac_framelock #(
     // This may be an better approach for Xilinx where SRL16E blocks are
     // inferred
     //
-    wire [MAX_NUM_FRAMES_MSB:0] req_flock_framenum_m1;
+    wire [MAX_NUM_FRAMES_WIDTH:0] req_flock_framenum_m1;
     assign  req_flock_framenum_m1 = req_flock_framenum - 1;
     genvar k;
-    for (k=0;k<MAX_NUM_FRAMES_MSB;k=k+1) begin : frame_id_log
-      reg [MAX_NUM_FRAMES-1 : 0] s_frame_id_log;
+    for (k = 0; k < MAX_NUM_FRAMES_WIDTH; k = k + 1) begin : frame_id_log
+      reg [MAX_NUM_FRAMES-1:0] s_frame_id_log;
       always @(posedge req_aclk) begin
         if (m_frame_id_vld) begin
           s_frame_id_log <= {s_frame_id_log[MAX_NUM_FRAMES-2 : 0], m_frame_id[k]};
@@ -264,7 +253,7 @@ module axi_dmac_framelock #(
 
 `else
 
-    reg [MAX_NUM_FRAMES_MSB-1:0] s_frame_id_log = 'h0;
+    reg [MAX_NUM_FRAMES_WIDTH-1:0] s_frame_id_log = 'h0;
     reg s_frame_id_log_vld = 1'b0;
     always @(posedge req_aclk) begin
       if (req_aresetn == 1'b0) begin
@@ -275,14 +264,16 @@ module axi_dmac_framelock #(
       end
     end
 
-    wire [MAX_NUM_FRAMES_MSB:0] id_at_distance;
-    wire [MAX_NUM_FRAMES_MSB:0] s_frame_id_log_qualified;
+    wire [MAX_NUM_FRAMES_WIDTH:0] id_at_distance;
+    wire [MAX_NUM_FRAMES_WIDTH:0] s_frame_id_log_qualified;
+    wire [MAX_NUM_FRAMES_WIDTH:0] sum_distance_framenum;
 
-    assign s_frame_id_log_qualified = s_frame_id_log_vld ? s_frame_id_log : req_flock_framenum-1;
+    assign s_frame_id_log_qualified = s_frame_id_log_vld ? {1'b1, s_frame_id_log} : req_flock_framenum-1;
 
     assign id_at_distance = s_frame_id_log_qualified - req_flock_distance;
-    assign target_id = id_at_distance[MAX_NUM_FRAMES_MSB] ? id_at_distance + req_flock_framenum
-                                                          : id_at_distance;
+    assign target_id = id_at_distance[MAX_NUM_FRAMES_WIDTH] ? sum_distance_framenum[MAX_NUM_FRAMES_WIDTH-1:0]
+                                                            : id_at_distance[MAX_NUM_FRAMES_WIDTH-1:0];
+    assign sum_distance_framenum = id_at_distance + req_flock_framenum;
 `endif
 
     reg m_frame_ready = 1'b0;
@@ -305,6 +296,6 @@ module axi_dmac_framelock #(
     assign enable_out_req = req_flock_wait_master == 1'b0 ||
                             ((m_frame_ready | ~req_flock_mode) & ~wait_distance);
 
-  end
+  end endgenerate
 
 endmodule

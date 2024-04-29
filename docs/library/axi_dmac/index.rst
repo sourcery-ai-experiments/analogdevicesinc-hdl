@@ -480,6 +480,17 @@ from the internal buffer will be cleared/lost. In case of AXIS the DMAC will
 wait for data to be accepted if valid is high since it can't just de-assert
 valid without breaking the interface semantics
 
+Autorun mode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When the ``HAS_AUTORUN`` parameter is set the DMAC can initiate transfers without
+software intervention. Once the core comes out of reset, the core will operate
+on a transfer defined through the ``DMAC_DEF_*`` synthesis parameters.
+This is useful mostly in ``CYCLIC`` mode. In non cyclic mode, once the initial
+transfer is done the core will go to idle state and will wait for software
+interaction if that exists. In this mode the s_axi AXI configuration interface
+is optional.
+
 .. _axi_dmac interrupts:
 
 Interrupts
@@ -603,7 +614,7 @@ the following order:
      - id
      - This field corresponds to an identifier of the descriptor.
    * - 64‑bit
-     - dest_addr 
+     - dest_addr
      - This field contains the destination address of the transfer.
    * - 64‑bit
      - src_addr
@@ -618,7 +629,7 @@ the following order:
      - x_len
      - This field contains the number of bytes to transfer, minus one.
    * - 32‑bit
-     - src_stride 
+     - src_stride
      - This field contains the number of bytes between the start of one row and
        the next row for the source address.
    * - 32-bit
@@ -654,12 +665,41 @@ have the distinct advantage of generating fewer interrupts by treating the
 chained descriptor transfers as a single transfer, thus improving the performance
 of the application.
 
-Framelock
+External Synchronization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. todo::
+This feature allows external components to throttle the consumption of
+descriptors queued by the software. A transfer will start only after the
+assertion of the external sync signal for at least one clock cycle.
 
-   Do this section
+The sync signal can be either in source or destination clock domain or both.
+This feature does not ensures fixed latency from the assertion of external sync
+signal and the availability of the data at the destination interface.
+
+FrameLock Synchronization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This feature adds support for multiple 2D frame buffers which are used in a
+cyclic way. On the same set of buffers a second DMAC core can operate.
+The "FrameLock" mechanism ensures no buffer is accessed by two DMACs in the same time.
+
+The core can operate in two modes:
+
+* Writer mode - available in s2mm configuration, the writer DMAC will always
+  skip the current in use readers buffer
+* Reader mode - available in mm2s configuration, the reader DMAC will stay
+  behind the writers buffer by either repeating or skipping buffers according to
+  the speed relationship of the two cores.
+
+The writer and reader DMAC cores must be connected through the dedicated
+"framelock" interface. They must be programmed with similar settings regarding
+the buffers size, start address and stride through the ``FRAME_LOCK_CONFIG`` and
+``FRAME_LOCK_STRIDE`` registers.
+
+Notice that the reader DMA will start to read the frames only after the writer
+finished to store in the DDR at least ``FLOCK_FRAMEDISTANCE+1`` frames.
+This means that while the FLOCK_FRAMEDISTANCE+1 frames are written into the
+memory the reader DMA won’t output anything.
 
 Transfer Start Synchronization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
