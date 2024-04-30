@@ -71,7 +71,7 @@ ad_connect xlslice_0/Dout    xlconcat_0/In0
 ad_connect xlconstant_0/dout xlconcat_0/In1
 ad_connect xlslice_1/Dout    xlconcat_0/In2
 ad_connect xlconstant_0/dout xlconcat_0/In3
-ad_connect xlconcat_0/dout   axi_tpg_dma/s_axis_data 
+ad_connect xlconcat_0/dout   axi_tpg_dma/s_axis_data
 
 
 ad_connect axi_tmr/generateout0 axi_tpg_dma/src_ext_sync

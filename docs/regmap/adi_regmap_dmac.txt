@@ -222,7 +222,7 @@ FIELD
 TRANSFER_QUEUED
 RW1C
 This bit will be asserted if a transfer has been queued and it is possible to queue
-the next transfer. It can be masked out by setting the TRANSFER_QUEUED bit in the 
+the next transfer. It can be masked out by setting the TRANSFER_QUEUED bit in the
 IRQ_MASK register.
 ENDFIELD
 
