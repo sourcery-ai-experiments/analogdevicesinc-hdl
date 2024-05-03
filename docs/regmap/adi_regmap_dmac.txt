@@ -161,7 +161,7 @@ FIELD
 [0] ''CACHE_COHERENT''
 CACHE_COHERENT
 R
-Value of ''CACHE_COHERENT'' parameter.(0 - Disabled, 1 -  Enabled )
+Value of ''CACHE_COHERENT'' parameter. (0 - Disabled, 1 -  Enabled)
 ENDFIELD
 
 FIELD
@@ -646,7 +646,69 @@ DESCRIPTOR_ID
 RO
 ID of the descriptor that points to the current memory segment being transferred.
 If HWDESC is set to 0, then this register returns 0.
+ENDFIELD
 
+############################################################################################
+############################################################################################
+
+REG
+0x116
+FRAMELOCK_CONFIG
+Configure the Framelock feature.
+ENDREG
+
+FIELD
+[23:16] 0x00000000
+DISTANCE
+RW
+Applicable only in output delay mode. Set the output delay in frames.
+Should be set in interval 0 to flock, FRAMENUM - 2.
+ENDFIELD
+
+FIELD
+[9] 0x00000000
+WAIT_WRITER
+RW
+If WAIT_WRITER is unset, enable the generation of new request right away.
+In Simple Flock when WAIT_WRITER is set, the reader must wait until the writer completes a
+buffer. In Dynamic Flock just wait until the required number of buffers are filled, then
+enable the request generation regardless of the writer.
+ENDFIELD
+
+FIELD
+[8] 0x00000000
+MODE
+RW
+Select operating mode of the framebuffer.
+(0 - Frame rate conversion mode (dynamic), 1 - Output delay mode (simple))
+ENDFIELD
+
+FIELD
+[7:0] 0x00000000
+FRAMENUM
+RW
+The total number of video frame buffers.
+Related to MAX_NUM_FRAMES synthesis parameter.
+ENDFIELD
+
+############################################################################################
+############################################################################################
+
+REG
+0x117
+FRAMELOCK_STRIDE
+Configure the Framelock feature.
+ENDREG
+
+FIELD
+[31:0] 0x00000000
+STRIDE
+RW
+The number of bytes between the start of one row and the next row for the
+framelock.
+
+Note, this field is only valid if the DMA channel has been configured with 2D
+transfer support, framelock support, and write to memory support.
 ENDFIELD
 
 ############################################################################################

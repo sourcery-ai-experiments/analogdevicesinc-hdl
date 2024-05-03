@@ -93,7 +93,7 @@ module axi_dmac_transfer #(
   input [DMA_LENGTH_WIDTH-1:0] req_src_stride,
   input [MAX_NUM_FRAMES_WIDTH:0] req_flock_framenum,
   input                          req_flock_mode,
-  input                          req_flock_wait_master,
+  input                          req_flock_wait_writer,
   input [MAX_NUM_FRAMES_WIDTH:0] req_flock_distance,
   input [DMA_AXI_ADDR_WIDTH-1:0] req_flock_stride,
   input req_flock_en,
@@ -477,7 +477,7 @@ module axi_dmac_transfer #(
 
     .req_flock_framenum (req_flock_framenum),
     .req_flock_mode (req_flock_mode),
-    .req_flock_wait_master (req_flock_wait_master),
+    .req_flock_wait_writer (req_flock_wait_writer),
     .req_flock_distance (req_flock_distance),
     .req_flock_stride (req_flock_stride),
     .req_flock_en (req_flock_en),

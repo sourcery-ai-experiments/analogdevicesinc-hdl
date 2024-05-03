@@ -8,7 +8,7 @@ PROJECT_NAME := fsync_zed
 M_DEPS += ../common/flock_bd.tcl
 M_DEPS += ../../common/zed/zed_system_constr.xdc
 M_DEPS += ../../common/zed/zed_system_bd.tcl
-M_DEPS += ../../../library/xilinx/ad_iobuf.v
+M_DEPS += ../../../library/common/ad_iobuf.v
 
 LIB_DEPS += axi_clkgen
 LIB_DEPS += axi_dmac

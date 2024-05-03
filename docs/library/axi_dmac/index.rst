@@ -693,12 +693,12 @@ The core can operate in two modes:
 
 The writer and reader DMAC cores must be connected through the dedicated
 "framelock" interface. They must be programmed with similar settings regarding
-the buffers size, start address and stride through the ``FRAME_LOCK_CONFIG`` and
-``FRAME_LOCK_STRIDE`` registers.
+the buffers size, start address and stride through the ``FRAMELOCK_CONFIG`` and
+``FRAMELOCK_STRIDE`` registers.
 
 Notice that the reader DMA will start to read the frames only after the writer
-finished to store in the DDR at least ``FLOCK_FRAMEDISTANCE+1`` frames.
-This means that while the FLOCK_FRAMEDISTANCE+1 frames are written into the
+finished to store in the DDR at least ``FRAMELOCK_CONFIG_DISTANCE+1`` frames.
+This means that while the FRAMLOCK_CONFIG_DISTANCE+1 frames are written into the
 memory the reader DMA won’t output anything.
 
 Transfer Start Synchronization

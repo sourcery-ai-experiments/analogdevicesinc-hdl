@@ -93,8 +93,8 @@ module axi_dmac_regmap_request #(
   output [DMA_LENGTH_WIDTH-1:0] request_dest_stride,
   output [DMA_LENGTH_WIDTH-1:0] request_src_stride,
   output [MAX_NUM_FRAMES_WIDTH:0] request_flock_framenum,
-  output                        request_flock_mode,
-  output                        request_flock_wait_master,
+  output                          request_flock_mode,
+  output                          request_flock_wait_writer,
   output [MAX_NUM_FRAMES_WIDTH:0] request_flock_distance,
   output [DMA_AXI_ADDR_WIDTH-1:0] request_flock_stride,
   output request_flock_en,
@@ -235,7 +235,7 @@ module axi_dmac_regmap_request #(
               up_rdata <= 'h0;
               up_rdata[MAX_NUM_FRAMES_WIDTH:0] <= request_flock_framenum;
               up_rdata[8] <= request_flock_mode;
-              up_rdata[9] <= request_flock_wait_master;
+              up_rdata[9] <= request_flock_wait_writer;
               up_rdata[16 +:(MAX_NUM_FRAMES_WIDTH+1)] <= request_flock_distance;
             end
     9'h117: up_rdata <= request_flock_stride;
@@ -289,7 +289,7 @@ module axi_dmac_regmap_request #(
       DMAC_DEF_FLOCK_CFG[MAX_NUM_FRAMES_WIDTH:0];
     localparam DMAC_DEF_FLOCK_CFG_MODE = (HAS_AUTORUN == 0) ? 'h0 :
       DMAC_DEF_FLOCK_CFG[8];
-    localparam DMAC_DEF_FLOCK_CFG_WAIT_MASTER = (HAS_AUTORUN == 0) ? 'h0 :
+    localparam DMAC_DEF_FLOCK_CFG_WAIT_WRITER = (HAS_AUTORUN == 0) ? 'h0 :
       DMAC_DEF_FLOCK_CFG[9];
     localparam DMAC_DEF_FLOCK_CFG_DIST = (HAS_AUTORUN == 0) ? 'h00 :
       DMAC_DEF_FLOCK_CFG[16 +: (MAX_NUM_FRAMES_WIDTH+1)];
@@ -298,7 +298,7 @@ module axi_dmac_regmap_request #(
 
     reg [MAX_NUM_FRAMES_WIDTH:0] up_dma_flock_framenum = DMAC_DEF_FLOCK_CFG_FNUM;
     reg                          up_dma_flock_mode = DMAC_DEF_FLOCK_CFG_MODE;
-    reg                          up_dma_flock_wait_master = DMAC_DEF_FLOCK_CFG_WAIT_MASTER;
+    reg                          up_dma_flock_wait_writer = DMAC_DEF_FLOCK_CFG_WAIT_WRITER;
     reg [MAX_NUM_FRAMES_WIDTH:0] up_dma_flock_distance = DMAC_DEF_FLOCK_CFG_DIST;
     reg [DMA_AXI_ADDR_WIDTH-1:0] up_dma_flock_stride = DMAC_DEF_FLOCK_STRIDE_LOC;
 
@@ -306,25 +306,25 @@ module axi_dmac_regmap_request #(
       if (reset == 1'b1) begin
         up_dma_flock_framenum <= DMAC_DEF_FLOCK_CFG_FNUM;
         up_dma_flock_mode <= DMAC_DEF_FLOCK_CFG_MODE;
-        up_dma_flock_wait_master <= DMAC_DEF_FLOCK_CFG_WAIT_MASTER;
+        up_dma_flock_wait_writer <= DMAC_DEF_FLOCK_CFG_WAIT_WRITER;
         up_dma_flock_distance <= DMAC_DEF_FLOCK_CFG_DIST;
         up_dma_flock_stride <= DMAC_DEF_FLOCK_STRIDE_LOC;
       end else if (up_wreq == 1'b1) begin
         case (up_waddr)
-          9'h115: begin
+          9'h116: begin
             up_dma_flock_framenum <= up_wdata[MAX_NUM_FRAMES_WIDTH:0];
             up_dma_flock_mode <= up_wdata[8];
-            up_dma_flock_wait_master <= up_wdata[9];
+            up_dma_flock_wait_writer <= up_wdata[9];
             up_dma_flock_distance <= up_wdata[16 +: (MAX_NUM_FRAMES_WIDTH+1)];
           end
-          9'h116: up_dma_flock_stride <= up_wdata[DMA_AXI_ADDR_WIDTH-1:0];
+          9'h117: up_dma_flock_stride <= up_wdata[DMA_AXI_ADDR_WIDTH-1:0];
         endcase
       end
     end
 
     assign request_flock_framenum = up_dma_flock_framenum;
     assign request_flock_mode = up_dma_flock_mode;
-    assign request_flock_wait_master = up_dma_flock_wait_master;
+    assign request_flock_wait_writer = up_dma_flock_wait_writer;
     assign request_flock_distance = up_dma_flock_distance;
     assign request_flock_stride = up_dma_flock_stride;
     assign request_flock_en = up_dma_flock_en;
@@ -332,7 +332,7 @@ module axi_dmac_regmap_request #(
   end else begin
     assign request_flock_framenum = 'h0;
     assign request_flock_mode = 'h0;
-    assign request_flock_wait_master = 'h0;
+    assign request_flock_wait_writer = 'h0;
     assign request_flock_distance = 'h0;
     assign request_flock_stride = 'h0;
     assign request_flock_en = 1'b0;

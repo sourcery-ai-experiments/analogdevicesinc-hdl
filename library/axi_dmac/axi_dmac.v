@@ -408,7 +408,7 @@ module axi_dmac #(
     REAL_MAX_BYTES_PER_BURST > 4 ? 3 :
     REAL_MAX_BYTES_PER_BURST > 2 ? 2 : 1;
 
-  // 0 - Master (MM writer) ; 1 - Slave (MM reader)
+  // 0 - MM writer , 1 - MM reader
   localparam FRAME_LOCK_MODE = DMA_TYPE_SRC == 0 && DMA_TYPE_DEST != 0;
 
   // ID signals from the DMAC, just for debugging
@@ -446,7 +446,7 @@ module axi_dmac #(
   wire [DMA_LENGTH_WIDTH-1:0] up_dma_req_src_stride;
   wire [MAX_NUM_FRAMES_WIDTH:0] up_dma_req_flock_framenum;
   wire                        up_dma_req_flock_mode;
-  wire                        up_dma_req_flock_wait_master;
+  wire                        up_dma_req_flock_wait_writer;
   wire [MAX_NUM_FRAMES_WIDTH:0] up_dma_req_flock_distance;
   wire [DMA_AXI_ADDR_WIDTH-1:0] up_dma_req_flock_stride;
   wire up_dma_req_flock_en;
@@ -548,7 +548,7 @@ module axi_dmac #(
     .request_src_stride(up_dma_req_src_stride),
     .request_flock_framenum(up_dma_req_flock_framenum),
     .request_flock_mode(up_dma_req_flock_mode),
-    .request_flock_wait_master(up_dma_req_flock_wait_master),
+    .request_flock_wait_writer(up_dma_req_flock_wait_writer),
     .request_flock_distance(up_dma_req_flock_distance),
     .request_flock_stride(up_dma_req_flock_stride),
     .request_flock_en(up_dma_req_flock_en),
@@ -585,6 +585,7 @@ module axi_dmac #(
     .DMA_TYPE_SRC(DMA_TYPE_SRC),
     .DMA_AXI_ADDR_WIDTH(DMA_AXI_ADDR_WIDTH),
     .DMA_2D_TRANSFER(DMA_2D_TRANSFER),
+    .DMA_2D_TLAST_MODE(DMA_2D_TLAST_MODE),
     .DMA_SG_TRANSFER(DMA_SG_TRANSFER),
     .ASYNC_CLK_REQ_SRC(ASYNC_CLK_REQ_SRC),
     .ASYNC_CLK_SRC_DEST(ASYNC_CLK_SRC_DEST),
@@ -602,7 +603,7 @@ module axi_dmac #(
     .ALLOW_ASYM_MEM(ALLOW_ASYM_MEM),
     .AXI_AXCACHE(AXI_AXCACHE),
     .AXI_AXPROT(AXI_AXPROT),
-    .DMA_2D_TLAST_MODE(DMA_2D_TLAST_MODE),
+    .ENABLE_FRAME_LOCK(ENABLE_FRAME_LOCK),
     .FRAME_LOCK_MODE(FRAME_LOCK_MODE),
     .MAX_NUM_FRAMES(MAX_NUM_FRAMES),
     .MAX_NUM_FRAMES_WIDTH(MAX_NUM_FRAMES_WIDTH),
@@ -626,7 +627,7 @@ module axi_dmac #(
     .req_src_stride(up_dma_req_src_stride),
     .req_flock_framenum(up_dma_req_flock_framenum),
     .req_flock_mode(up_dma_req_flock_mode),
-    .req_flock_wait_master(up_dma_req_flock_wait_master),
+    .req_flock_wait_writer(up_dma_req_flock_wait_writer),
     .req_flock_distance(up_dma_req_flock_distance),
     .req_flock_stride(up_dma_req_flock_stride),
     .req_flock_en(up_dma_req_flock_en),

@@ -37,7 +37,7 @@ module axi_dmac_framelock #(
   parameter DMA_AXI_ADDR_WIDTH = 32,
   parameter BYTES_PER_BEAT_WIDTH_DEST = 3,
   parameter BYTES_PER_BEAT_WIDTH_SRC = 3,
-  parameter FRAME_LOCK_MODE =  0, // 0 - Master (MM writer) ; 1 - Slave (MM reader)
+  parameter FRAME_LOCK_MODE =  0, // 0 - Writer (MM writer) ; 1 - Reader (MM reader)
   parameter MAX_NUM_FRAMES = 16,
   parameter MAX_NUM_FRAMES_WIDTH = 4
 ) (
@@ -52,7 +52,7 @@ module axi_dmac_framelock #(
 
   input [MAX_NUM_FRAMES_WIDTH:0] req_flock_framenum,
   input                          req_flock_mode,  // 0 - Dynamic. 1 - Simple
-  input                          req_flock_wait_master,
+  input                          req_flock_wait_writer,
   input [MAX_NUM_FRAMES_WIDTH:0] req_flock_distance,
   input [DMA_AXI_ADDR_WIDTH-1:0] req_flock_stride,
   input req_flock_en,
@@ -70,10 +70,10 @@ module axi_dmac_framelock #(
   input out_response_valid,
 
   // Frame lock interface
-  // Master mode
+  // Writer mode
   input  [MAX_NUM_FRAMES_WIDTH:0] m_frame_in,
   output [MAX_NUM_FRAMES_WIDTH:0] m_frame_out,
-  // Slave mode
+  // Reader mode
   input  [MAX_NUM_FRAMES_WIDTH:0] s_frame_in,  // {valid, id}
   output [MAX_NUM_FRAMES_WIDTH:0] s_frame_out  // {valid, id}
 
@@ -85,7 +85,7 @@ module axi_dmac_framelock #(
 
   reg [DMA_AXI_ADDR_WIDTH-1:BYTES_PER_BEAT_WIDTH] req_address = 'h0;
   reg [MAX_NUM_FRAMES_WIDTH-1:0] transfer_id = 'h0;
-  reg [MAX_NUM_FRAMES_WIDTH-1:0] cur_frame_id;
+  reg [MAX_NUM_FRAMES_WIDTH-1:0] cur_frame_id = 'h0;
   reg prev_buf_done;
 
   wire [MAX_NUM_FRAMES_WIDTH:0] transfer_id_p1;
@@ -134,7 +134,7 @@ module axi_dmac_framelock #(
     end
   end
 
-  // Latch the transfer IDs so it can be passed to the slave
+  // Latch the transfer IDs so it can be passed to the reader
   // once it is completed
   always @(posedge req_aclk) begin
     if (out_req_valid & out_req_ready) begin
@@ -163,32 +163,32 @@ module axi_dmac_framelock #(
 
 
   generate if (FRAME_LOCK_MODE == 0) begin
-    // Master mode logic
-    reg slave_started;
+    // Writer mode logic
+    reg reader_started;
 
     wire [MAX_NUM_FRAMES_WIDTH-1:0] s_frame_id;
     wire s_frame_id_vld;
 
-    // The master will iterate over the buffers one by one in a cyclic way
-    // In dynamic mode will look at slave current buffer keeping that untouched.
-    // In simple mode will not look at the slave.
+    // The writer will iterate over the buffers one by one in a cyclic way
+    // In dynamic mode will look at reader current buffer keeping that untouched.
+    // In simple mode will not look at the reader.
 
     assign m_frame_out = {resp_eot, cur_frame_id};
     assign s_frame_id = m_frame_in[MAX_NUM_FRAMES_WIDTH-1:0];
     assign s_frame_id_vld = m_frame_in[MAX_NUM_FRAMES_WIDTH];
 
     assign calc_done = s_frame_id != transfer_id ||
-                       slave_started == 1'b0 ||
+                       reader_started == 1'b0 ||
                        req_flock_mode == 1'b1;
 
     always @(posedge req_aclk) begin
       if (req_aresetn == 1'b0) begin
-        slave_started <= 1'b0;
+        reader_started <= 1'b0;
       end else if (req_valid & req_ready) begin
-        slave_started <= 1'b0;
+        reader_started <= 1'b0;
       end else if (~req_ready) begin
         if (s_frame_id_vld) begin
-          slave_started <= 1'b1;
+          reader_started <= 1'b1;
         end
       end
     end
@@ -196,7 +196,7 @@ module axi_dmac_framelock #(
     assign enable_out_req = 1'b1;
 
   end else begin
-    // Slave mode logic
+    // Reader mode logic
 
     wire [MAX_NUM_FRAMES_WIDTH-1:0] target_id;
     wire [MAX_NUM_FRAMES_WIDTH-1:0] m_frame_id;
@@ -205,7 +205,7 @@ module axi_dmac_framelock #(
     reg frame_id_vld = 1'b0;
     reg wait_distance = 1'b0;
 
-    // The slave will stay behind and try to keep up with the master at a distance.
+    // The reader will stay behind and try to keep up with the writer at a distance.
     // This will be done either by repeating or skipping buffers depending on the
     // frame rate relationship of source and sink.
 
@@ -218,9 +218,8 @@ module axi_dmac_framelock #(
     always @(posedge req_aclk) begin
       frame_id_vld <= calc_enable & calc_done;
     end
-    // If 'wait for master' is enabled the slave will start to operate only
-    // after the master starts to write the frame at the programmed distance.
-    //
+    // If 'wait for writer' is enabled the reader will start to operate only
+    // after the writer starts to write the frame at the programmed distance.
     always @(posedge req_aclk) begin
       if (req_aresetn == 1'b0) begin
         wait_distance <= 1'b1;
@@ -234,10 +233,9 @@ module axi_dmac_framelock #(
     end
 
 `ifdef XILINX_SRL16
-    // Keep a log of frame ids the master wrote
+    // Keep a log of frame ids the writer wrote
     // This may be an better approach for Xilinx where SRL16E blocks are
     // inferred
-    //
     wire [MAX_NUM_FRAMES_WIDTH:0] req_flock_framenum_m1;
     assign  req_flock_framenum_m1 = req_flock_framenum - 1;
     genvar k;
@@ -287,13 +285,13 @@ module axi_dmac_framelock #(
       end
     end
 
-    // If 'wait for master' is disabled, enable the generation of new request
+    // If 'wait for writer' is disabled, enable the generation of new request
     // right away.
-    // In Simple Flock when 'wait for master' is enabled, the slave must wait
-    // until the master completes a buffer. In Dynamic Flock just wait until
+    // In Simple Flock when 'wait for writer' is enabled, the reader must wait
+    // until the writer completes a buffer. In Dynamic Flock just wait until
     // the required number of buffers are filled, then enable the request
-    // generation regardless of the master.
-    assign enable_out_req = req_flock_wait_master == 1'b0 ||
+    // generation regardless of the writer.
+    assign enable_out_req = req_flock_wait_writer == 1'b0 ||
                             ((m_frame_ready | ~req_flock_mode) & ~wait_distance);
 
   end endgenerate
