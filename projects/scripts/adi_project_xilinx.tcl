@@ -693,4 +693,3 @@ proc adi_project_verify {project_name} {
     return -code error [format "ERROR: Timing Constraints NOT met!"]
   }
 }
-

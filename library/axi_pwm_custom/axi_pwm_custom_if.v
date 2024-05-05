@@ -40,10 +40,10 @@ module axi_pwm_custom_if #(
 
   // the width and period are defined in number of clock cycles
   parameter   PULSE_PERIOD = 4096
-) ( 
+) (
 
   // physical interface
-    
+
 input            pwm_clk,
 input            rstn,
 input    [11:0]  data_channel_0,
@@ -64,7 +64,7 @@ reg     [11:0]  pulse_period_d = PULSE_PERIOD;
 reg     [11:0]  data_channel_0_d = 12'b0;
 reg     [11:0]  data_channel_1_d = 12'b0;
 reg     [11:0]  data_channel_2_d = 12'b0;
-reg     [11:0]  data_channel_3_d = 12'b0;  
+reg     [11:0]  data_channel_3_d = 12'b0;
 reg             pwm_led_0_s = 1'b0;
 reg             pwm_led_1_s = 1'b0;
 reg             pwm_led_2_s = 1'b0;
@@ -72,12 +72,12 @@ reg             pwm_led_3_s = 1'b0;
 
 // internal wires
 
-wire           end_of_period;  
-assign pwm_led_0 = pwm_led_0_s; 
+wire           end_of_period;
+assign pwm_led_0 = pwm_led_0_s;
 assign pwm_led_1 = pwm_led_1_s;
 assign pwm_led_2 = pwm_led_2_s;
 assign pwm_led_3 = pwm_led_3_s;
- 
+
 
 // Counter
 
@@ -86,7 +86,7 @@ always @(posedge pwm_clk) begin
     pulse_period_cnt <= 12'd1;
   end else begin
     pulse_period_cnt <= pulse_period_cnt + 1'b1;
-    
+
   end
 end
 
@@ -95,25 +95,25 @@ assign end_of_period = (pulse_period_cnt == pulse_period_d) ? 1'b1 : 1'b0;
 // PWM Generator
 
 always @(posedge pwm_clk) begin
-  
+
   if (data_channel_0 > pulse_period_cnt)
     pwm_led_0_s <= 1'b1;
-  else  
-    pwm_led_0_s <= 1'b0;  
+  else
+    pwm_led_0_s <= 1'b0;
   if (data_channel_1 > pulse_period_cnt)
     pwm_led_1_s <= 1'b1;
-  else  
+  else
     pwm_led_1_s <= 1'b0;
   if (data_channel_2 > pulse_period_cnt)
     pwm_led_2_s <= 1'b1;
-  else  
+  else
     pwm_led_2_s <= 1'b0;
   if (data_channel_3 > pulse_period_cnt)
     pwm_led_3_s <= 1'b1;
-  else  
-    pwm_led_3_s <= 1'b0;        
+  else
+    pwm_led_3_s <= 1'b0;
 
-end  
+end
 
 always @(posedge pwm_clk) begin
 
@@ -128,7 +128,7 @@ always @(posedge pwm_clk) begin
     data_channel_1_d <= data_channel_1_d;
     data_channel_2_d <= data_channel_2_d;
     data_channel_3_d <= data_channel_3_d;
-  end 
+  end
 
 
 end

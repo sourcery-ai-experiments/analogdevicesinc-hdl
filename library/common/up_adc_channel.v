@@ -156,7 +156,7 @@ module up_adc_channel #(
   wire    [31:0]  up_adc_read_data_s;
   wire    [ 7:0]  up_adc_status_header_s;
   wire    [ 2:0]  up_adc_softspan_s;
-  wire    [11:0]  up_adc_data_channel_s; 
+  wire    [11:0]  up_adc_data_channel_s;
 
   // 2's complement function
 
