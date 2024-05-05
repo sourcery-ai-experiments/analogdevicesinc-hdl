@@ -51,11 +51,11 @@ module axi_pwm_custom_if_tb;
   reg   [11:0]  pulse_period_cnt = 12'h0;
   reg   [11:0]  pulse_period_d = 4096;
 
-  wire          end_of_period;  
-  wire          pwm_led_0; 
+  wire          end_of_period;
+  wire          pwm_led_0;
   wire          pwm_led_1;
-  wire          pwm_led_2; 
-  wire          pwm_led_3; 
+  wire          pwm_led_2;
+  wire          pwm_led_3;
 
   always #1
    pwm_clk <= ~pwm_clk;
@@ -65,19 +65,19 @@ module axi_pwm_custom_if_tb;
   end
 
 
-  always @(posedge pwm_clk) begin 
-    if (data_channel_1 == 12'hFFF) begin 
+  always @(posedge pwm_clk) begin
+    if (data_channel_1 == 12'hFFF) begin
       data_channel_0 <= 12'b0;
       data_channel_1 <= 12'b0;
       data_channel_2 <= 12'b0;
       data_channel_3 <= 12'b0;
-     
-    end else if (end_of_period == 1'b1) begin 
+
+    end else if (end_of_period == 1'b1) begin
       data_channel_0 <= data_channel_0 + 12'h1;
       data_channel_1 <= data_channel_1 + 12'h1;
       data_channel_2 <= data_channel_2 + 12'h1;
-      data_channel_3 <= data_channel_3 + 12'h1;  
-     
+      data_channel_3 <= data_channel_3 + 12'h1;
+
     end else begin
       data_channel_0 <= data_channel_0;
       data_channel_1 <= data_channel_1;
@@ -93,10 +93,10 @@ module axi_pwm_custom_if_tb;
       pulse_period_cnt <= 12'd1;
     end else begin
       pulse_period_cnt <= pulse_period_cnt + 1'b1;
-      
+
     end
   end
-  
+
   assign end_of_period = (pulse_period_cnt == pulse_period_d) ? 1'b1 : 1'b0;
 
   axi_pwm_custom_if axi_pwm_custom_if_dut (

@@ -32,7 +32,7 @@ create_bd_port -dir O -from 63 -to 0 gpio_t
 # instance: sys_ps7
 
 ad_ip_instance processing_system7 sys_ps7
-source $ad_hdl_dir/projects/common/zyboz7/zyboz7_system_ps7.tcl 
+source $ad_hdl_dir/projects/common/zyboz7/zyboz7_system_ps7.tcl
 ad_ip_parameter sys_ps7 CONFIG.PCW_TTC0_PERIPHERAL_ENABLE 1
 ad_ip_parameter sys_ps7 CONFIG.PCW_EN_CLK1_PORT 1
 ad_ip_parameter sys_ps7 CONFIG.PCW_EN_RST1_PORT 0
@@ -41,7 +41,7 @@ ad_ip_parameter sys_ps7 CONFIG.PCW_FPGA1_PERIPHERAL_FREQMHZ 133.0
 ad_ip_parameter sys_ps7 CONFIG.PCW_USE_FABRIC_INTERRUPT 1
 ad_ip_parameter sys_ps7 CONFIG.PCW_IRQ_F2P_INTR 1
 ad_ip_parameter sys_ps7 CONFIG.PCW_GPIO_EMIO_GPIO_IO 64
-ad_ip_parameter sys_ps7 CONFIG.PCW_IRQ_F2P_MODE DIRECT 
+ad_ip_parameter sys_ps7 CONFIG.PCW_IRQ_F2P_MODE DIRECT
 ad_ip_parameter sys_ps7 CONFIG.PCW_SPI0_PERIPHERAL_ENABLE 1
 ad_ip_parameter sys_ps7 CONFIG.PCW_EN_EMIO_WP_SDIO0 1
 ad_ip_parameter sys_ps7 CONFIG.PCW_SPI1_PERIPHERAL_ENABLE 1

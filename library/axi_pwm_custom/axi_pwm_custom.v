@@ -42,7 +42,7 @@ module axi_pwm_custom #(
   parameter   SPEED_GRADE = 0,
   parameter   DEV_PACKAGE = 0
 ) (
-  
+
   // physical interface
 
   output                  pwm_led_0,
@@ -88,7 +88,7 @@ wire            up_clk;
 wire            adc_clk;
 wire            pwm_clk;
 wire            up_rstn;
-         
+
 
 
 // internal signals
@@ -104,9 +104,9 @@ wire            up_wack_s[0:3];
 
 wire            up_wreq_s;
 wire            up_rreq_s;
-wire [13:0]     up_waddr_s; 
+wire [13:0]     up_waddr_s;
 wire [13:0]     up_raddr_s;
-wire [31:0]     up_wdata_s; 
+wire [31:0]     up_wdata_s;
 
   //defaults
 
@@ -114,7 +114,7 @@ assign up_clk = s_axi_aclk;
 assign pwm_clk = s_axi_aclk;
 assign adc_clk = s_axi_aclk;
 assign up_rstn = s_axi_aresetn;
-assign adc_rst = ~up_rstn; 
+assign adc_rst = ~up_rstn;
 
   // processor read interface
 
@@ -131,7 +131,7 @@ always @(negedge up_rstn or posedge up_clk) begin
 end
 
    axi_pwm_custom_if #(
-    
+
   ) i_if (
     .pwm_clk (pwm_clk),
     .rstn (up_rstn),
@@ -198,8 +198,8 @@ end
     .up_rreq (up_rreq_s),
     .up_raddr (up_raddr_s),
     .up_rdata (up_rdata_s[0]),
-    .up_rack  ( up_rack_s[0])); 
-    
+    .up_rack  ( up_rack_s[0]));
+
 
     up_adc_channel #(
     .CHANNEL_ID(1)
@@ -253,7 +253,7 @@ end
     .up_rreq (up_rreq_s),
     .up_raddr (up_raddr_s),
     .up_rdata (up_rdata_s[1]),
-    .up_rack  ( up_rack_s[1])); 
+    .up_rack  ( up_rack_s[1]));
 
     up_adc_channel #(
       .CHANNEL_ID(2)
@@ -307,7 +307,7 @@ end
       .up_rreq (up_rreq_s),
       .up_raddr (up_raddr_s),
       .up_rdata (up_rdata_s[2]),
-      .up_rack  ( up_rack_s[2])); 
+      .up_rack  ( up_rack_s[2]));
 
       up_adc_channel #(
         .CHANNEL_ID(3)
@@ -361,7 +361,7 @@ end
         .up_rreq (up_rreq_s),
         .up_raddr (up_raddr_s),
         .up_rdata (up_rdata_s[3]),
-        .up_rack  ( up_rack_s[3])); 
+        .up_rack  ( up_rack_s[3]));
   // up bus interface
 
   up_axi i_up_axi (
